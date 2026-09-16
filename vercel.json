@@ -1,0 +1,17 @@
+{
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/admin", "destination": "/stage.html?mode=admin" },
+    { "source": "/trinh-chieu", "destination": "/stage.html?mode=present" },
+    { "source": "/nhom/:team", "destination": "/team.html?team=:team" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "same-origin" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#075fd4" />
+    <meta name="description" content="Màn hình điều khiển và trình chiếu game Đường lên đỉnh Olympia." />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='29' fill='%23075fd4' stroke='%23f4cf63' stroke-width='4'/%3E%3Cpath d='M17 39 32 14l15 25-15 11z' fill='%23fff'/%3E%3C/svg%3E" />
+    <title>Đường lên đỉnh Olympia · Trình chiếu</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="stage" id="stage" data-state="ready">
+      <header class="status-bar">
+        <div class="brand-chip"><span class="brand-mark"></span><span>OLYMPIA CONTROL</span></div>
+        <div class="slide-chip"><span>SLIDE</span><strong id="slideNumber">01</strong></div>
+      </header>
+
+      <section class="slide intro-slide active" data-slide="1" aria-label="Intro chương trình">
+        <video id="introVideo" preload="auto" playsinline><source src="./media/olympia-intro-23.mp4" type="video/mp4" /></video>
+        <div class="intro-wait"><p class="eyebrow">ĐƯỜNG LÊN ĐỈNH OLYMPIA</p><h1>Sẵn sàng bắt đầu</h1><p>Intro · 00:31</p><button class="cta-button" id="startButton" type="button"><span class="play-icon"></span>Bắt đầu chương trình</button></div>
+        <div class="video-progress"><span id="progressFill"></span></div>
+      </section>
+
+      <section class="slide blue-slide team-slide" data-slide="2" aria-labelledby="teamsTitle">
+        <h2 class="main-title" id="teamsTitle">ĐƯỜNG LÊN ĐỈNH OLYMPIA 26</h2>
+        <article class="team-card team-one"><div class="team-badge"><img src="./assets/olympia-laurel.png" alt=""/><strong>1</strong></div><div class="team-copy"><h3>NHÓM 1</h3><p>ĐỘI THI SỐ 01</p></div></article>
+        <article class="team-card team-two"><div class="team-copy"><h3>NHÓM 2</h3><p>ĐỘI THI SỐ 02</p></div><div class="team-badge"><img src="./assets/olympia-laurel.png" alt=""/><strong>2</strong></div></article>
+        <article class="team-card team-three"><div class="team-badge"><img src="./assets/olympia-laurel.png" alt=""/><strong>3</strong></div><div class="team-copy"><h3>NHÓM 3</h3><p>ĐỘI THI SỐ 03</p></div></article>
+      </section>
+
+      <section class="slide kickoff-intro" data-slide="3" aria-label="Video intro phần Khởi Động">
+        <video id="kickoffVideo" preload="auto" playsinline><source src="./media/khoi-dong-intro.mp4" type="video/mp4" /></video>
+        <button class="video-start-overlay" id="kickoffPlay" type="button"><span class="play-icon"></span>Phát intro Khởi Động</button>
+      </section>
+
+      <section class="slide blue-slide title-slide" data-slide="4" aria-labelledby="kickoffTitle"><p>PHẦN THI</p><h2 id="kickoffTitle">KHỞI ĐỘNG</h2><span class="gold-line"></span></section>
+
+      <section class="slide blue-slide rules-slide" data-slide="5" aria-labelledby="rulesTitle">
+        <div class="rules-shell">
+          <img src="./assets/olympia-info-panel.png" alt="" class="rules-frame" />
+          <div class="rules-titlebar"><small>LUẬT CHƠI</small><h2 id="rulesTitle">KHỞI ĐỘNG</h2></div>
+          <ul class="rules-list">
+            <li>Có <b>4 lượt thi</b>, gồm <b>3 lượt riêng</b> cho từng nhóm và <b>1 lượt chung</b> cho cả ba nhóm.</li>
+            <li>Ở lượt riêng, mỗi nhóm có <b>15 câu hỏi</b>. Trả lời đúng được <b>10 điểm</b>; trả lời sai hoặc bỏ qua không bị trừ điểm.</li>
+            <li>Ở lượt chung, ba nhóm cùng tham gia <b>15 câu hỏi</b> và giành quyền trả lời. Đúng được <b>10 điểm</b>; sai hoặc không trả lời bị trừ <b>5 điểm</b>.</li>
+            <li>Mỗi nhóm phải đưa ra câu trả lời trong vòng <b>5 giây</b> kể từ khi MC đọc xong câu hỏi hoặc nhóm giành được quyền trả lời.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide blue-slide game-slide private-round" data-slide="6" aria-labelledby="privateTeamName">
+        <div class="round-label">KHỞI ĐỘNG · LƯỢT RIÊNG</div><h2 class="current-team" id="privateTeamName">NHÓM 1</h2>
+        <div class="game-actions"><button class="timer-button" id="privateTimerButton" type="button"><span id="privateTimer">5</span><small>BẮT ĐẦU</small></button><button class="judge-button correct" id="privateCorrect" type="button">ĐÚNG <b>+10</b></button><button class="judge-button wrong" id="privateWrong" type="button">SAI <b>+0</b></button></div>
+        <div class="quiz-shell"><div class="team-strip" id="privateTeamStrip"></div><div class="question-panel"><div class="question-meta"><span id="privateQuestionNumber">CÂU 01 / 15</span><span id="privateTeamProgress">NHÓM 1 · LƯỢT RIÊNG</span></div><p id="privateQuestion">Câu hỏi riêng số 1 dành cho Nhóm 1</p></div></div>
+      </section>
+
+      <section class="slide blue-slide results-slide" data-slide="7" aria-labelledby="privateResultsTitle"><h2 id="privateResultsTitle">OLYMPIA 26</h2><p class="results-kicker">KHỞI ĐỘNG · KẾT THÚC LƯỢT RIÊNG</p><div class="scoreboard" id="privateScoreboard"></div><div class="results-footer">KẾT QUẢ HIỆN TẠI</div></section>
+
+      <section class="slide blue-slide title-slide" data-slide="8" aria-labelledby="commonTitle"><p>KHỞI ĐỘNG</p><h2 id="commonTitle">LƯỢT CHUNG</h2><span class="gold-line"></span></section>
+
+      <section class="slide blue-slide game-slide common-round" data-slide="9" aria-label="Câu hỏi lượt chung">
+        <div class="round-label">KHỞI ĐỘNG · LƯỢT CHUNG</div>
+        <div class="game-actions common-actions"><button class="timer-button" id="commonTimerButton" type="button"><span id="commonTimer">5</span><small>BẮT ĐẦU</small></button><button class="skip-button" id="commonSkip" type="button">BỎ QUA</button><button class="judge-button correct" id="commonCorrect" type="button">ĐÚNG <b>+10</b></button><button class="judge-button wrong" id="commonWrong" type="button">SAI <b>−5</b></button></div>
+        <p class="select-hint" id="selectHint">Chọn nhóm giành quyền trả lời</p><div class="quiz-shell common-shell"><div class="team-strip selectable" id="commonTeamStrip"></div><div class="question-panel common-question"><div class="question-meta"><span id="commonQuestionNumber">CÂU 01 / 15</span><span id="commonPhaseLabel">GIÀNH QUYỀN TRẢ LỜI</span></div><p id="commonQuestion">Câu hỏi chung số 1 dành cho cả ba nhóm</p></div></div>
+      </section>
+
+      <section class="slide blue-slide results-slide" data-slide="10" aria-labelledby="finalResultsTitle"><h2 id="finalResultsTitle">OLYMPIA 26</h2><p class="results-kicker">KHỞI ĐỘNG · HOÀN THÀNH PHẦN THI</p><div class="scoreboard" id="finalScoreboard"></div><div class="results-footer">KẾT QUẢ HIỆN TẠI</div></section>
+
+      <section class="slide section-video-slide" data-slide="11" aria-label="Video intro Vượt Chướng Ngại Vật">
+        <video id="obstacleVideo" preload="auto" playsinline><source src="./media/obstacle-intro.mp4" type="video/mp4" /></video>
+        <button class="video-start-overlay" id="obstaclePlay" type="button"><span class="play-icon"></span>Phát intro Vượt Chướng Ngại Vật</button>
+      </section>
+
+      <section class="slide blue-slide title-slide obstacle-title-slide" data-slide="12" aria-labelledby="obstacleTitle"><p>PHẦN THI</p><h2 id="obstacleTitle">VƯỢT CHƯỚNG<br/>NGẠI VẬT</h2><span class="gold-line"></span></section>
+
+      <section class="slide blue-slide rules-slide obstacle-rules" data-slide="13" aria-labelledby="obstacleRulesTitle">
+        <div class="rules-shell">
+          <img src="./assets/olympia-info-panel.png" alt="" class="rules-frame" />
+          <div class="rules-titlebar"><small>LUẬT CHƠI</small><h2 id="obstacleRulesTitle">VƯỢT CHƯỚNG NGẠI VẬT</h2></div>
+          <ul class="rules-list compact-rules">
+            <li>Có <b>6 từ hàng ngang</b> liên quan đến Chướng ngại vật và một hình ảnh gồm <b>7 mảnh ghép</b>; mảnh trung tâm là gợi ý cuối cùng.</li>
+            <li>Mỗi nhóm có tối đa <b>2 lượt lựa chọn</b> từ hàng ngang. Thời gian suy nghĩ cho mỗi câu là <b>15 giây</b>.</li>
+            <li>Trả lời đúng mỗi từ hàng ngang được <b>10 điểm</b>. Mảnh ghép tương ứng sẽ được mở sau khi xác nhận câu trả lời.</li>
+            <li>Các nhóm có thể trả lời Chướng ngại vật bất cứ lúc nào. Trả lời sai sẽ bị loại khỏi phần thi này.</li>
+            <li>Điểm Chướng ngại vật giảm dần từ <b>60 xuống 10 điểm</b> theo số từ hàng ngang đã mở; gợi ý trung tâm đúng được <b>20 điểm</b>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide blue-slide obstacle-game" data-slide="14" aria-label="Bàn chơi Vượt Chướng Ngại Vật">
+        <div class="round-label">VƯỢT CHƯỚNG NGẠI VẬT · CÂU <span id="obstacleQuestionNumber">01</span> / 07</div>
+        <div class="obstacle-layout">
+          <div class="puzzle-board" id="puzzleBoard" aria-label="Bảy mảnh ghép"></div>
+          <div class="clue-board">
+            <div class="clue-title">CHƯỚNG NGẠI VẬT CÓ <b>8 CHỮ CÁI</b></div>
+            <div class="clue-list" id="obstacleClueList"></div>
+          </div>
+        </div>
+        <div class="obstacle-bottom">
+          <div class="obstacle-question-box"><span id="obstacleQuestionLabel">TỪ HÀNG NGANG 1</span><p id="obstacleQuestion">Nội dung câu hỏi Vượt Chướng Ngại Vật số 1</p></div>
+          <button class="timer-button obstacle-timer" id="obstacleTimerButton" type="button"><span id="obstacleTimer">15</span><small>BẮT ĐẦU</small></button>
+        </div>
+      </section>
+
+      <section class="slide blue-slide response-slide" data-slide="15" aria-labelledby="responseTitle">
+        <p class="response-kicker">VƯỢT CHƯỚNG NGẠI VẬT · CÂU <span id="responseQuestionNumber">01</span></p>
+        <h2 id="responseTitle">CÂU TRẢ LỜI CỦA CÁC NHÓM</h2>
+        <div class="response-cards" id="obstacleResponseCards"></div>
+        <p class="response-help">Bấm vào nhóm trả lời sai để làm tối ô</p>
+        <button class="confirm-responses" id="confirmObstacleResponses" type="button">XÁC NHẬN &amp; CÂU TIẾP THEO</button>
+      </section>
+
+      <section class="slide blue-slide results-slide" data-slide="16" aria-labelledby="obstacleResultsTitle"><h2 id="obstacleResultsTitle">OLYMPIA 26</h2><p class="results-kicker">VƯỢT CHƯỚNG NGẠI VẬT</p><div class="scoreboard" id="obstacleScoreboard"></div><div class="results-footer">KẾT QUẢ HIỆN TẠI</div></section>
+
+      <section class="slide section-video-slide speed-video-slide" data-slide="17" aria-label="Video intro Tăng Tốc">
+        <video id="speedVideo" preload="auto" playsinline><source src="./media/speed-intro.mp4" type="video/mp4" /></video>
+        <button class="video-start-overlay" id="speedPlay" type="button"><span class="play-icon"></span>Phát intro Tăng Tốc</button>
+      </section>
+
+      <section class="slide blue-slide title-slide" data-slide="18" aria-labelledby="speedTitle"><p>PHẦN THI</p><h2 id="speedTitle">TĂNG TỐC</h2><span class="gold-line"></span></section>
+
+      <section class="slide blue-slide rules-slide speed-rules" data-slide="19" aria-labelledby="speedRulesTitle">
+        <div class="rules-shell">
+          <img src="./assets/speed-panel.png" alt="" class="rules-frame" />
+          <div class="rules-titlebar"><small>LUẬT CHƠI</small><h2 id="speedRulesTitle">TĂNG TỐC</h2></div>
+          <ul class="rules-list compact-rules speed-rules-list">
+            <li>Có <b>8 câu hỏi</b>; các nhóm nhập đáp án trên máy tính.</li>
+            <li>Bốn câu đầu có <b>20 giây</b>; bốn câu sau có <b>30 giây</b> suy nghĩ.</li>
+            <li>Trong các đáp án đúng: nhanh nhất được <b>40 điểm</b>, nhanh thứ hai <b>30 điểm</b>, nhanh thứ ba <b>20 điểm</b>.</li>
+            <li>Đáp án phải đúng chính tả. Câu trả lời tương đồng về nghĩa với đáp án chương trình có thể được chấp nhận.</li>
+            <li>Các dạng câu hỏi gồm: nhìn nhanh, sắp xếp, suy luận và câu hỏi đoạn băng.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide blue-slide speed-game" data-slide="20" aria-label="Bàn chơi Tăng Tốc">
+        <div class="speed-head"><p>TĂNG TỐC · CÂU <span id="speedQuestionNumber">01</span> / 08</p><h2 id="speedQuestionTime">20 GIÂY</h2></div>
+        <div class="speed-stage">
+          <div class="speed-question"><span>NỘI DUNG CÂU HỎI</span><p id="speedQuestion">Nội dung câu hỏi Tăng Tốc số 1</p></div>
+          <div class="speed-media"><strong>HÌNH ẢNH / VIDEO CÂU HỎI</strong><small>Sẽ được thêm từ trang admin sau</small></div>
+        </div>
+        <div class="speed-controls">
+          <div class="speed-team-scores" id="speedTeamScores"></div>
+          <button class="timer-button speed-timer" id="speedTimerButton" type="button"><span id="speedTimer">20</span><small>BẮT ĐẦU</small></button>
+        </div>
+      </section>
+
+      <section class="slide blue-slide response-slide speed-response-slide" data-slide="21" aria-labelledby="speedResponseTitle">
+        <p class="response-kicker">TĂNG TỐC · CÂU <span id="speedResponseQuestionNumber">01</span> / 08</p>
+        <h2 id="speedResponseTitle">ĐÁP ÁN &amp; THỜI GIAN TRẢ LỜI</h2>
+        <div class="response-cards speed-response-cards" id="speedResponseCards"></div>
+        <p class="response-help">Bấm vào nhóm trả lời sai để làm tối ô; điểm được xếp theo thời gian của các đáp án đúng</p>
+        <button class="confirm-responses" id="confirmSpeedResponses" type="button">CHẤM ĐIỂM &amp; CÂU TIẾP THEO</button>
+      </section>
+
+      <section class="slide blue-slide results-slide" data-slide="22" aria-labelledby="speedResultsTitle"><h2 id="speedResultsTitle">OLYMPIA 26</h2><p class="results-kicker">TĂNG TỐC · HOÀN THÀNH PHẦN THI</p><div class="scoreboard" id="speedScoreboard"></div><div class="results-footer">KẾT QUẢ HIỆN TẠI</div></section>
+
+      <section class="slide section-video-slide finish-video-slide" data-slide="23" aria-label="Video intro Về Đích">
+        <video id="finishVideo" preload="auto" playsinline><source src="./media/finish-intro.mp4" type="video/mp4" /></video>
+        <button class="video-start-overlay" id="finishPlay" type="button"><span class="play-icon"></span>Phát intro Về Đích</button>
+      </section>
+
+      <section class="slide blue-slide title-slide" data-slide="24" aria-labelledby="finishTitle"><p>PHẦN THI</p><h2 id="finishTitle">VỀ ĐÍCH</h2><span class="gold-line"></span></section>
+
+      <section class="slide blue-slide rules-slide finish-rules" data-slide="25" aria-labelledby="finishRulesTitle">
+        <div class="rules-shell">
+          <img src="./assets/olympia-info-panel.png" alt="" class="rules-frame" />
+          <div class="rules-titlebar"><small>LUẬT CHƠI</small><h2 id="finishRulesTitle">VỀ ĐÍCH</h2></div>
+          <ul class="rules-list compact-rules finish-rules-list">
+            <li>Có hai mức điểm <b>20</b> và <b>30 điểm</b>. Mỗi nhóm chọn một bộ gồm <b>4 câu hỏi</b>.</li>
+            <li>Nhóm có điểm cao nhất sau Tăng Tốc thi trước, sau đó lần lượt đến nhóm có điểm cao tiếp theo.</li>
+            <li>Câu 20 điểm có <b>15 giây</b>; câu 30 điểm có <b>20 giây</b> suy nghĩ và trả lời.</li>
+            <li>Trả lời đúng được cộng điểm câu hỏi. Nếu trả lời sai, các nhóm còn lại có thể giành quyền trong 5 giây; đúng lấy điểm, sai bị trừ nửa số điểm.</li>
+            <li>Mỗi nhóm được dùng <b>Ngôi sao hy vọng một lần</b> trước khi câu hỏi xuất hiện: đúng được gấp đôi, sai bị trừ đúng số điểm câu hỏi.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="slide blue-slide finish-selection" data-slide="26" data-finish-selection-round="0" aria-label="Chọn gói câu hỏi Về Đích lượt 1">
+        <p class="finish-kicker">VỀ ĐÍCH · LƯỢT 1 / 3</p><h2 class="finish-select-team">NHÓM 1</h2><p class="finish-select-label">CHỌN BỘ 4 CÂU HỎI</p>
+        <div class="finish-pack-options"></div><p class="finish-select-help">Nhấn từng ô để chuyển giữa 20 và 30 điểm</p>
+        <button class="confirm-responses finish-confirm" type="button">XÁC NHẬN GÓI CÂU HỎI</button>
+      </section>
+
+      <section class="slide blue-slide finish-game" data-slide="27" data-finish-game-round="0" aria-label="Về Đích lượt 1">
+        <div class="finish-game-head"><p>VỀ ĐÍCH · LƯỢT 1 / 3</p><h2 class="finish-game-team">NHÓM 1</h2></div><div class="finish-score-strip"></div>
+        <div class="finish-question-panel"><span class="finish-question-label">CÂU 1 · 20 ĐIỂM</span><p class="finish-question-text">Nội dung câu hỏi Về Đích</p></div>
+        <div class="finish-game-controls"><button class="finish-star" type="button"><img src="./assets/hope-star.png" alt=""/>NGÔI SAO HY VỌNG</button><button class="timer-button finish-timer" type="button"><span>15</span><small>BẮT ĐẦU</small></button><button class="judge-button correct finish-correct" type="button">ĐÚNG <b>+20</b></button><button class="judge-button wrong finish-wrong" type="button">SAI <b>+0</b></button></div>
+        <div class="finish-pack-status"></div><div class="finish-steal-panel" hidden><strong>5</strong><span>CHỜ GIÀNH QUYỀN</span><div class="finish-buzz-teams"></div></div>
+      </section>
+
+      <section class="slide blue-slide results-slide" data-slide="28"><h2>OLYMPIA 26</h2><p class="results-kicker">VỀ ĐÍCH · KẾT THÚC LƯỢT 1</p><div class="scoreboard" id="finishScoreboard1"></div><div class="results-footer">KẾT QUẢ HIỆN TẠI</div></section>
+
+      <section class="slide blue-slide finish-selection" data-slide="29" data-finish-selection-round="1" aria-label="Chọn gói câu hỏi Về Đích lượt 2">
+        <p class="finish-kicker">VỀ ĐÍCH · LƯỢT 2 / 3</p><h2 class="finish-select-team">NHÓM 2</h2><p class="finish-select-label">CHỌN BỘ 4 CÂU HỎI</p>
+        <div class="finish-pack-options"></div><p class="finish-select-help">Nhấn từng ô để chuyển giữa 20 và 30 điểm</p>
+        <button class="confirm-responses finish-confirm" type="button">XÁC NHẬN GÓI CÂU HỎI</button>
+      </section>
+
+      <section class="slide blue-slide finish-game" data-slide="30" data-finish-game-round="1" aria-label="Về Đích lượt 2">
+        <div class="finish-game-head"><p>VỀ ĐÍCH · LƯỢT 2 / 3</p><h2 class="finish-game-team">NHÓM 2</h2></div><div class="finish-score-strip"></div>
+        <div class="finish-question-panel"><span class="finish-question-label">CÂU 1 · 20 ĐIỂM</span><p class="finish-question-text">Nội dung câu hỏi Về Đích</p></div>
+        <div class="finish-game-controls"><button class="finish-star" type="button"><img src="./assets/hope-star.png" alt=""/>NGÔI SAO HY VỌNG</button><button class="timer-button finish-timer" type="button"><span>15</span><small>BẮT ĐẦU</small></button><button class="judge-button correct finish-correct" type="button">ĐÚNG <b>+20</b></button><button class="judge-button wrong finish-wrong" type="button">SAI <b>+0</b></button></div>
+        <div class="finish-pack-status"></div><div class="finish-steal-panel" hidden><strong>5</strong><span>CHỜ GIÀNH QUYỀN</span><div class="finish-buzz-teams"></div></div>
+      </section>
+
+      <section class="slide blue-slide results-slide" data-slide="31"><h2>OLYMPIA 26</h2><p class="results-kicker">VỀ ĐÍCH · KẾT THÚC LƯỢT 2</p><div class="scoreboard" id="finishScoreboard2"></div><div class="results-footer">KẾT QUẢ HIỆN TẠI</div></section>
+
+      <section class="slide blue-slide finish-selection" data-slide="32" data-finish-selection-round="2" aria-label="Chọn gói câu hỏi Về Đích lượt 3">
+        <p class="finish-kicker">VỀ ĐÍCH · LƯỢT 3 / 3</p><h2 class="finish-select-team">NHÓM 3</h2><p class="finish-select-label">CHỌN BỘ 4 CÂU HỎI</p>
+        <div class="finish-pack-options"></div><p class="finish-select-help">Nhấn từng ô để chuyển giữa 20 và 30 điểm</p>
+        <button class="confirm-responses finish-confirm" type="button">XÁC NHẬN GÓI CÂU HỎI</button>
+      </section>
+
+      <section class="slide blue-slide finish-game" data-slide="33" data-finish-game-round="2" aria-label="Về Đích lượt 3">
+        <div class="finish-game-head"><p>VỀ ĐÍCH · LƯỢT 3 / 3</p><h2 class="finish-game-team">NHÓM 3</h2></div><div class="finish-score-strip"></div>
+        <div class="finish-question-panel"><span class="finish-question-label">CÂU 1 · 20 ĐIỂM</span><p class="finish-question-text">Nội dung câu hỏi Về Đích</p></div>
+        <div class="finish-game-controls"><button class="finish-star" type="button"><img src="./assets/hope-star.png" alt=""/>NGÔI SAO HY VỌNG</button><button class="timer-button finish-timer" type="button"><span>15</span><small>BẮT ĐẦU</small></button><button class="judge-button correct finish-correct" type="button">ĐÚNG <b>+20</b></button><button class="judge-button wrong finish-wrong" type="button">SAI <b>+0</b></button></div>
+        <div class="finish-pack-status"></div><div class="finish-steal-panel" hidden><strong>5</strong><span>CHỜ GIÀNH QUYỀN</span><div class="finish-buzz-teams"></div></div>
+      </section>
+
+      <section class="slide blue-slide results-slide final-results-slide" data-slide="34"><h2>KẾT QUẢ CHUNG CUỘC</h2><p class="results-kicker">ĐƯỜNG LÊN ĐỈNH OLYMPIA 26</p><div class="scoreboard" id="championScoreboard"></div><div class="results-footer">CHÚC MỪNG CÁC NHÓM</div></section>
+
+      <nav class="control-dock" aria-label="Điều khiển trình chiếu">
+        <div class="live-state"><span class="state-dot"></span><span id="stateLabel">Đang chờ</span></div>
+        <div class="dock-actions">
+          <button class="icon-button" id="previousSlide" type="button" aria-label="Slide trước" title="Slide trước (←)"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+          <button class="icon-button intro-control" id="restartButton" type="button" aria-label="Phát lại intro" title="Phát lại intro (R)"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5"/></svg></button>
+          <button class="primary-control intro-control" id="playPauseButton" type="button"><span class="play-small"></span><span id="playLabel">Phát</span></button>
+          <button class="icon-button intro-control" id="muteButton" type="button" aria-label="Tắt âm thanh"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Zm4.5 4.5a4 4 0 0 1 0 5m2.5-8a8 8 0 0 1 0 11"/></svg></button>
+          <button class="icon-button" id="fullscreenButton" type="button" aria-label="Toàn màn hình" title="Toàn màn hình (F)"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5"/></svg></button>
+          <button class="icon-button" id="nextSlide" type="button" aria-label="Slide tiếp theo" title="Slide tiếp theo (→)"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+        </div><span class="dock-context" id="dockContext">INTRO · 00:31</span>
+      </nav>
+    </main>
+    <script src="./app.js"></script>
+    <script type="module" src="./sync.js"></script>
+  </body>
+</html>
