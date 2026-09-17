@@ -56,7 +56,7 @@ const mediaBank = {
   obstacle: Array.from({ length: 4 }, () => Array.from({ length: 7 }, blankMedia)), speed: Array.from({ length: 24 }, blankMedia),
   finish: teams.map(() => Array.from({ length: 4 }, blankMedia)),
 };
-const roundVideos = { kickoffOutroUrl: '', obstacleOutroUrl: '' };
+const roundVideos = { kickoffOutroUrl: '', obstacleSetOutroUrls: Array(4).fill('') };
 const obstacleImages = Array(4).fill('');
 const questionAudio = new Audio();
 let lastQuestionMediaKey = '';
@@ -163,7 +163,7 @@ const loadEditorContent = () => {
   $('#editorAnswerText').value = answers[question] ?? '';
   $('#editorQuestionMode').value = media[question]?.mode || 'text';
   $('#editorAudioWrap').hidden = $('#editorQuestionMode').value !== 'audio';
-  $('#editorVisualWrap').hidden = round !== 'speed';
+  $('#editorVisualWrap').hidden = !['speed', 'finish'].includes(round);
   $('#editorSaveStatus').textContent = '';
 };
 
@@ -204,7 +204,7 @@ const saveQuestionContent = async () => {
   const kickoffOutro = $('#editorKickoffOutroFile').files[0];
   const obstacleOutro = $('#editorObstacleOutroFile').files[0];
   if (kickoffOutro) roundVideos.kickoffOutroUrl = (await window.OlympiaSync.uploadMedia(kickoffOutro)).publicUrl;
-  if (obstacleOutro) roundVideos.obstacleOutroUrl = (await window.OlympiaSync.uploadMedia(obstacleOutro)).publicUrl;
+  if (obstacleOutro) roundVideos.obstacleSetOutroUrls[obstacleSet] = (await window.OlympiaSync.uploadMedia(obstacleOutro)).publicUrl;
   await window.OlympiaSync.saveContent(getContent());
   renderCurrentSynchronizedSlide();
   renderAdminAnswerKey();
@@ -375,13 +375,25 @@ const playQuestionAudio = (media, key) => {
   questionAudio.play().catch(() => window.dispatchEvent(new CustomEvent('olympia-media-blocked')));
 };
 
+const renderVisualMedia = (container, media, placeholder = '', key = '') => {
+  const url = media?.visualUrl || '';
+  const token = `${key}|${url}`;
+  if (container.dataset.mediaToken === token) return;
+  container.dataset.mediaToken = token;
+  container.classList.toggle('has-media', Boolean(url));
+  if (!url) { container.innerHTML = placeholder; return; }
+  if (media.visualType === 'video') {
+    container.innerHTML = `<video src="${url}" playsinline controls></video>`;
+    container.querySelector('video').play().catch(() => window.dispatchEvent(new CustomEvent('olympia-media-blocked')));
+  } else container.innerHTML = `<img src="${url}" alt="Minh họa câu hỏi"/>`;
+};
+
 const renderObstacleGame = () => {
   const obstacleQuestions = obstacleQuestionSets[activeObstacleSet];
   const obstacleAnswers = obstacleAnswerSets[activeObstacleSet];
   const obstacleRevealed = obstacleRevealedSets[activeObstacleSet];
   const hasSelection = obstacleQuestionIndex !== null;
   $('#activeObstacleSetLabel').textContent = `BỘ ${activeObstacleSet + 1}`;
-  $$('#obstacleSetSwitcher [data-obstacle-set]').forEach((button) => button.classList.toggle('active', Number(button.dataset.obstacleSet) === activeObstacleSet));
   $('#puzzleBoard').style.backgroundImage = obstacleImages[activeObstacleSet]
     ? `linear-gradient(rgba(2,20,60,.08),rgba(2,20,60,.08)),url("${obstacleImages[activeObstacleSet]}")`
     : "url('./assets/obstacle-puzzle-frame.png')";
@@ -397,7 +409,8 @@ const renderObstacleGame = () => {
   $('#obstacleTimerButton').disabled = !hasSelection;
   $('#puzzleBoard').innerHTML = obstacleRevealed.map((revealed, index) => `<button type="button" aria-label="Chọn câu hỏi ${index + 1}" class="puzzle-piece${revealed ? ' revealed' : ''}${index === obstacleQuestionIndex ? ' current' : ''}" data-obstacle-piece="${index}" ${revealed ? 'disabled' : ''}>${revealed ? '' : index + 1}</button>`).join('');
   const answerLength = (value) => [...String(value || '').replace(/\s/g, '')].length;
-  $('#obstacleAnswerLength').textContent = `${answerLength(obstacleAnswers[6])} CHỮ CÁI`;
+  const displayedAnswer = hasSelection ? obstacleAnswers[obstacleQuestionIndex] : obstacleAnswers[6];
+  $('#obstacleAnswerLength').textContent = `${answerLength(displayedAnswer)} CHỮ CÁI`;
   $('#obstacleClueList').innerHTML = obstacleAnswers.slice(0, 6).map((answer, index) => {
     const count = answerLength(answer);
     return `
@@ -411,7 +424,7 @@ const renderObstacleGame = () => {
       obstacleRevealed[6] = true;
       obstacleQuestionIndex = null;
       renderObstacleGame();
-      if (obstacleRevealed.every(Boolean)) window.setTimeout(() => goToSlide(16), 500);
+      if (obstacleRevealed.every(Boolean)) window.setTimeout(showObstacleSetOutro, 500);
       return;
     }
     obstacleQuestionIndex = index;
@@ -454,9 +467,25 @@ const confirmObstacleResponses = () => {
   obstacleRevealed[obstacleQuestionIndex] = true;
   obstacleWrongTeams = new Set();
   obstacleQuestionIndex = null;
-  if (obstacleRevealed.every(Boolean)) goToSlide(16);
+  if (obstacleRevealed.every(Boolean)) showObstacleSetOutro();
   else goToSlide(14);
 };
+
+const advanceAfterObstacleOutro = () => {
+  if (activeObstacleSet < 3) {
+    activeObstacleSet += 1;
+    obstacleQuestionIndex = null;
+    obstacleWrongTeams.clear();
+    goToSlide(14);
+  } else goToSlide(16);
+};
+
+function showObstacleSetOutro() {
+  const url = roundVideos.obstacleSetOutroUrls?.[activeObstacleSet] || '';
+  if (!url) { advanceAfterObstacleOutro(); return; }
+  obstacleOutroVideo.src = url;
+  goToSlide(36);
+}
 
 const speedDuration = () => (speedQuestionIndex < 12 ? 20 : 30);
 
@@ -467,9 +496,7 @@ const renderSpeedGame = () => {
   const media = mediaBank.speed[speedQuestionIndex];
   $('#speedQuestion').textContent = media?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : speedQuestions[speedQuestionIndex];
   playQuestionAudio(media, `speed-${speedQuestionIndex}`);
-  const mediaBox = $('#speedMedia');
-  if (media?.visualUrl) mediaBox.innerHTML = media.visualType === 'video' ? `<video src="${media.visualUrl}" autoplay playsinline controls></video>` : `<img src="${media.visualUrl}" alt="Minh họa câu hỏi"/>`;
-  else mediaBox.innerHTML = '<strong>HÌNH ẢNH / VIDEO CÂU HỎI</strong><small>Chưa có tệp minh họa</small>';
+  renderVisualMedia($('#speedMedia'), media, '<strong>HÌNH ẢNH / VIDEO CÂU HỎI</strong><small>Chưa có tệp minh họa</small>', `speed-${speedQuestionIndex}`);
   $('#speedTimer').textContent = String(duration);
   $('#speedTimerButton small').textContent = 'BẮT ĐẦU';
   $('#speedTeamScores').innerHTML = teams.map((team) => `<span><b>${team.name}</b><strong>${team.score}</strong></span>`).join('');
@@ -553,8 +580,10 @@ const renderFinishGame = (round) => {
   section.querySelector('.finish-score-strip').innerHTML = teams.map((team, index) => `<span class="${index === teamIndex ? 'active' : ''}"><b>${team.name}</b><strong>${team.score}</strong></span>`).join('');
   section.querySelector('.finish-question-label').textContent = `CÂU ${questionIndex + 1} / 4 · ${points} ĐIỂM`;
   const finishMedia = mediaBank.finish[teamIndex][questionIndex];
+  section.querySelector('.finish-question-panel').classList.toggle('has-visual', Boolean(finishQuestionRevealed && finishMedia?.visualUrl));
   section.querySelector('.finish-question-text').textContent = finishQuestionRevealed ? (finishMedia?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : finishQuestionText(teamIndex, questionIndex)) : 'CHỜ CHỌN NGÔI SAO HY VỌNG';
   if (finishQuestionRevealed) playQuestionAudio(finishMedia, `finish-${teamIndex}-${questionIndex}`);
+  renderVisualMedia(section.querySelector('.finish-question-media'), finishQuestionRevealed ? finishMedia : null, '', `finish-${teamIndex}-${questionIndex}-${finishQuestionRevealed}`);
   let starChoice = section.querySelector('.finish-star-choice');
   if (!starChoice) {
     starChoice = document.createElement('div');
@@ -752,6 +781,10 @@ function goToSlide(number) {
     finishVideo.currentTime = 0;
     finishVideo.play().then(() => $('.finish-video-slide').classList.remove('needs-play')).catch(() => $('.finish-video-slide').classList.add('needs-play'));
   }
+  if (currentSlide === 36) {
+    const setOutro = roundVideos.obstacleSetOutroUrls?.[activeObstacleSet] || '';
+    if (setOutro && obstacleOutroVideo.src !== setOutro) obstacleOutroVideo.src = setOutro;
+  }
   [[35, kickoffOutroVideo], [36, obstacleOutroVideo]].forEach(([slide, element]) => {
     if (currentSlide !== slide) { element.pause(); return; }
     element.currentTime = 0;
@@ -775,15 +808,12 @@ function goToSlide(number) {
 const nextLogicalSlide = () => {
   if (currentSlide === 10 && roundVideos.kickoffOutroUrl) return 35;
   if (currentSlide === 35) return 11;
-  if (currentSlide === 16 && roundVideos.obstacleOutroUrl) return 36;
-  if (currentSlide === 36) return 17;
   return currentSlide + 1;
 };
 const previousLogicalSlide = () => {
   if (currentSlide === 11 && roundVideos.kickoffOutroUrl) return 35;
   if (currentSlide === 35) return 10;
-  if (currentSlide === 17 && roundVideos.obstacleOutroUrl) return 36;
-  if (currentSlide === 36) return 16;
+  if (currentSlide === 36) return 14;
   return currentSlide - 1;
 };
 
@@ -877,9 +907,11 @@ const applyContent = (content) => {
   content.mediaBank?.private?.forEach((list, index) => copyMedia(mediaBank.private[index], list));
   content.mediaBank?.finish?.forEach((list, index) => copyMedia(mediaBank.finish[index], list));
   Object.assign(roundVideos, content.roundVideos || {});
+  if (!Array.isArray(roundVideos.obstacleSetOutroUrls)) roundVideos.obstacleSetOutroUrls = Array(4).fill('');
+  if (content.roundVideos?.obstacleOutroUrl && !roundVideos.obstacleSetOutroUrls.some(Boolean)) roundVideos.obstacleSetOutroUrls[0] = content.roundVideos.obstacleOutroUrl;
   if (Array.isArray(content.obstacleImages)) content.obstacleImages.forEach((url, index) => { if (index < obstacleImages.length && typeof url === 'string') obstacleImages[index] = url; });
   if (roundVideos.kickoffOutroUrl) kickoffOutroVideo.src = roundVideos.kickoffOutroUrl;
-  if (roundVideos.obstacleOutroUrl) obstacleOutroVideo.src = roundVideos.obstacleOutroUrl;
+  if (roundVideos.obstacleSetOutroUrls[activeObstacleSet]) obstacleOutroVideo.src = roundVideos.obstacleSetOutroUrls[activeObstacleSet];
   renderCurrentSynchronizedSlide();
 };
 
@@ -971,7 +1003,8 @@ const applyIntroPlayback = async (remote, force = false) => {
 const activatePresentationMedia = async () => {
   if (!isPresentation) return true;
   if (currentSlide === 1 && introPlayback.playing) return applyIntroPlayback(introPlayback, true);
-  const activeVideo = ({ 3: kickoffVideo, 11: obstacleVideo, 17: speedVideo, 23: finishVideo, 35: kickoffOutroVideo, 36: obstacleOutroVideo })[currentSlide];
+  const activeVideo = ({ 3: kickoffVideo, 11: obstacleVideo, 17: speedVideo, 23: finishVideo, 35: kickoffOutroVideo, 36: obstacleOutroVideo })[currentSlide]
+    || $('.slide.active .speed-media video, .slide.active .finish-question-media video');
   if (!activeVideo) return true;
   try {
     await activeVideo.play();
@@ -1018,7 +1051,7 @@ $('#finishPlay').addEventListener('click', () => finishVideo.play().then(() => $
 $('#kickoffOutroPlay').addEventListener('click', () => kickoffOutroVideo.play());
 $('#obstacleOutroPlay').addEventListener('click', () => obstacleOutroVideo.play());
 previousSlide.addEventListener('click', () => goToSlide(previousLogicalSlide()));
-nextSlide.addEventListener('click', () => goToSlide(nextLogicalSlide()));
+nextSlide.addEventListener('click', () => { if (currentSlide === 36) advanceAfterObstacleOutro(); else goToSlide(nextLogicalSlide()); });
 
 $('#scoreEditorButton').addEventListener('click', () => {
   teams.forEach((team, index) => { $(`#scoreInput${index + 1}`).value = team.score; });
@@ -1034,7 +1067,7 @@ $('#resetGameButton').addEventListener('click', async () => {
   try { const result = await window.OlympiaSync.resetGame(); applySynchronizedState(result.state); } catch (error) { window.alert(`Không thể reset: ${error.message}`); }
 });
 kickoffOutroVideo.addEventListener('ended', () => { if (!isPresentation) goToSlide(11); });
-obstacleOutroVideo.addEventListener('ended', () => { if (!isPresentation) goToSlide(17); });
+obstacleOutroVideo.addEventListener('ended', () => { if (!isPresentation) advanceAfterObstacleOutro(); });
 
 $('#privateTimerButton').addEventListener('click', startPrivateTimer);
 $('#privateCorrect').addEventListener('click', () => judgePrivate(true));
@@ -1044,13 +1077,6 @@ $('#commonSkip').addEventListener('click', advanceCommon);
 $('#commonCorrect').addEventListener('click', () => judgeCommon(true));
 $('#commonWrong').addEventListener('click', () => judgeCommon(false));
 $('#obstacleTimerButton').addEventListener('click', startObstacleTimer);
-$$('[data-obstacle-set]').forEach((button) => button.addEventListener('click', () => {
-  activeObstacleSet = Number(button.dataset.obstacleSet);
-  obstacleQuestionIndex = null;
-  obstacleWrongTeams.clear();
-  renderObstacleGame();
-  signalStateChange();
-}));
 $('#confirmObstacleResponses').addEventListener('click', confirmObstacleResponses);
 $('#speedTimerButton').addEventListener('click', startSpeedTimer);
 $('#confirmSpeedResponses').addEventListener('click', confirmSpeedResponses);
@@ -1109,7 +1135,7 @@ document.addEventListener('keydown', (event) => {
   }
   if (event.code === 'Space' && currentSlide === 1) { event.preventDefault(); togglePlayback(); }
   if (event.key === 'ArrowLeft') goToSlide(previousLogicalSlide());
-  if (event.key === 'ArrowRight') goToSlide(nextLogicalSlide());
+  if (event.key === 'ArrowRight') { if (currentSlide === 36) advanceAfterObstacleOutro(); else goToSlide(nextLogicalSlide()); }
   if (event.key.toLowerCase() === 'r' && currentSlide === 1) playIntro(true);
   if (event.key.toLowerCase() === 'f') $('#fullscreenButton').click();
 });

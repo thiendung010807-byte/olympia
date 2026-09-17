@@ -81,13 +81,13 @@ Vercel tự nhận các file trong thư mục `api` là Node.js Functions và c�
 ## 5. Cách vận hành
 
 1. Máy điều khiển mở `/admin`, nhập `ADMIN_PASSWORD`.
-   Dùng nút biểu tượng bút để mở **Câu hỏi & đáp án**. Mỗi câu có thể là chữ hoặc âm thanh tự chạy; Tăng Tốc còn nhận ảnh/video. Vượt Chướng Ngại Vật có **4 bộ game độc lập**, mỗi bộ có 6 hàng ngang, đáp án trung tâm và ảnh chướng ngại vật riêng. Hai video kết thúc Khởi Động và Vượt Chướng Ngại Vật cũng được tải tại đây. Bấm **Lưu & đồng bộ** để ghi bền vững vào `game_content` (không mất khi reload/reset). Nút **Đ** sửa điểm; nút **↺** reset tiến trình nhưng giữ nguyên ngân hàng câu hỏi.
+   Dùng nút biểu tượng bút để mở **Câu hỏi & đáp án**. Mỗi câu có thể là chữ hoặc âm thanh tự chạy; Tăng Tốc và Về Đích nhận thêm ảnh/video 16:9. Vượt Chướng Ngại Vật có **4 bộ game độc lập**, mỗi bộ có 6 hàng ngang, đáp án trung tâm, ảnh chướng ngại vật và video kết thúc riêng. Video kết thúc Khởi Động cũng được tải tại đây. Bấm **Lưu & đồng bộ** để ghi bền vững vào `game_content` (không mất khi reload/reset). Nút **Đ** sửa điểm; nút **↺** reset tiến trình nhưng giữ nguyên ngân hàng câu hỏi.
 2. Máy chiếu mở `/trinh-chieu` và bật toàn màn hình.
    Nhấn **Bật trình chiếu** một lần trước khi bắt đầu để trình duyệt cho phép phát video và âm thanh. Realtime là kênh đồng bộ chính; hệ thống còn kiểm tra dự phòng mỗi 700 ms nếu kết nối WebSocket bị gián đoạn.
 3. Ba máy đội thi mở `/nhom/1`, `/nhom/2`, `/nhom/3`, nhập PIN tương ứng.
    PIN được kiểm tra ngay khi bấm **Vào phòng**. Nếu trang báo chưa cấu hình PIN, hãy kiểm tra ba biến `TEAM_1_PIN`, `TEAM_2_PIN`, `TEAM_3_PIN` trên Vercel và Redeploy.
 4. Khi admin chọn câu Vượt Chướng Ngại Vật hoặc bắt đầu câu Tăng Tốc, trang đội thi tự hiện ô nhập đáp án.
-   Trên màn chơi Vượt Chướng Ngại Vật, admin dùng các nút **Bộ 1–4** để chuyển giữa bốn game; tiến trình mở mảnh của từng bộ được giữ riêng.
+   Bốn bộ Vượt Chướng Ngại Vật chạy tuần tự. Kết thúc mỗi bộ, video toàn màn hình của bộ đó tự phát; hết video hệ thống tự chuyển sang bộ tiếp theo. Hết video Bộ 4 mới sang bảng kết quả.
 5. Đáp án và thời gian gửi hiện realtime trên trang admin/trình chiếu khi chuyển sang màn hình đáp án.
    Nhóm chưa gửi đáp án sẽ để trống; hệ thống không còn hiển thị nội dung mẫu trong ô kết quả.
 6. Ở Về Đích, nếu nhóm chính trả lời sai, hai nhóm còn lại thấy nút **BẤM CHUÔNG** trong 5 giây. Database chỉ chấp nhận lượt bấm đầu tiên.
