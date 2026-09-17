@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
 
+[hidden]{display:none!important}
+.present-mode .status-bar,.present-mode .connection-badge,.present-mode .cta-button{display:none!important}
+.present-mode button{cursor:default}
+
 :root{color-scheme:dark;font-family:'Be Vietnam Pro',system-ui,sans-serif;color:#fff;background:#02050c;--cyan:#50e8ff;--blue:#096cdb;--deep:#053cae;--gold:#f1d074;--red:#e92e43;--panel:rgba(4,35,105,.86)}
 *{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}button{font:inherit}.stage{position:relative;width:100%;height:100%;min-height:35rem;overflow:hidden;background:#02050c}.slide{position:absolute;inset:0;visibility:hidden;opacity:0;transition:opacity .45s ease,visibility .45s}.slide.active{visibility:visible;opacity:1}.blue-slide{background:#1c68e2 url('./assets/olympia-blue-bg.png') center/cover no-repeat}.blue-slide::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 42%,transparent 35%,rgba(0,38,151,.16) 100%)}
 

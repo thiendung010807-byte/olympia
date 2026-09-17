@@ -1,8 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const params = new URLSearchParams(location.search);
-const mode = params.get('mode') === 'present' ? 'present' : 'admin';
+const presentationPath = /^\/trinh-chieu\/?$/i.test(location.pathname);
+const mode = params.get('mode') === 'present' || presentationPath ? 'present' : 'admin';
 document.body.classList.add(`${mode}-mode`);
+document.body.dataset.mode = mode;
 
 const badge = document.createElement('div');
 badge.className = 'connection-badge';

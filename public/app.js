@@ -1,5 +1,7 @@
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
+const isPresentation = new URLSearchParams(location.search).get('mode') === 'present'
+  || /^\/trinh-chieu\/?$/i.test(location.pathname);
 
 const stage = $('#stage');
 const video = $('#introVideo');
@@ -732,6 +734,10 @@ finishVideo.addEventListener('timeupdate', () => {
 });
 
 document.addEventListener('keydown', (event) => {
+  if (isPresentation) {
+    if (event.key.toLowerCase() === 'f') $('#stage').requestFullscreen?.();
+    return;
+  }
   if (event.code === 'Space' && currentSlide === 1) { event.preventDefault(); togglePlayback(); }
   if (event.key === 'ArrowLeft') goToSlide(currentSlide - 1);
   if (event.key === 'ArrowRight') goToSlide(currentSlide + 1);

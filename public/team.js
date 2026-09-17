@@ -8,11 +8,9 @@ if (![1, 2, 3].includes(teamId)) location.replace('/');
 const $ = (selector) => document.querySelector(selector);
 $('#teamName').textContent = `NHÓM ${teamId}`;
 const pinKey = `olympia-team-${teamId}-pin`;
-let pin = sessionStorage.getItem(pinKey) || '';
-if (pin) {
-  $('#teamPin').value = pin;
-  $('#loginPanel').hidden = true;
-}
+const storedPin = sessionStorage.getItem(pinKey) || '';
+let pin = '';
+if (storedPin) $('#teamPin').value = storedPin;
 
 const config = await fetch('/api/config', { cache: 'no-store' }).then((response) => response.json());
 const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
@@ -27,7 +25,7 @@ const render = (state) => {
   currentState = state;
   if (!pin) {
     $('#loginPanel').hidden = false;
-    show('#waitPanel');
+    show(null);
     return;
   }
   $('#loginPanel').hidden = true;
@@ -61,11 +59,44 @@ const render = (state) => {
   show('#waitPanel');
 };
 
-$('#savePin').addEventListener('click', () => {
-  pin = $('#teamPin').value.trim();
-  if (!pin) return;
-  sessionStorage.setItem(pinKey, pin);
-  render(currentState);
+const enterRoom = async (candidate) => {
+  if (!candidate) {
+    $('#loginStatus').textContent = 'Vui lòng nhập mã PIN.';
+    return false;
+  }
+  const button = $('#savePin');
+  button.disabled = true;
+  button.textContent = 'ĐANG KIỂM TRA…';
+  $('#loginStatus').textContent = '';
+  try {
+    const response = await fetch('/api/team-auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-team-pin': candidate },
+      body: JSON.stringify({ teamId }),
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      sessionStorage.removeItem(pinKey);
+      $('#loginStatus').textContent = result.error || 'Không thể vào phòng.';
+      return false;
+    }
+    pin = candidate;
+    sessionStorage.setItem(pinKey, pin);
+    $('#connectionState').textContent = 'Đã vào phòng · đang kết nối realtime…';
+    render(currentState);
+    return true;
+  } catch {
+    $('#loginStatus').textContent = 'Không kết nối được máy chủ. Hãy thử lại.';
+    return false;
+  } finally {
+    button.disabled = false;
+    button.textContent = 'VÀO PHÒNG';
+  }
+};
+
+$('#savePin').addEventListener('click', () => enterRoom($('#teamPin').value.trim()));
+$('#teamPin').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') enterRoom($('#teamPin').value.trim());
 });
 
 $('#answerForm').addEventListener('submit', async (event) => {
@@ -102,6 +133,7 @@ $('#buzzButton').addEventListener('click', async () => {
 
 const initial = await fetch('/api/state', { cache: 'no-store' }).then((response) => response.json());
 render(initial.state);
+if (storedPin) await enterRoom(storedPin);
 
 supabase.channel(`team-${teamId}-${config.gameId}`)
   .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'game_state', filter: `id=eq.${config.gameId}` }, ({ new: row }) => render(row.state))

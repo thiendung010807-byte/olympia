@@ -83,6 +83,7 @@ Vercel tự nhận các file trong thư mục `api` là Node.js Functions và c�
 1. Máy điều khiển mở `/admin`, nhập `ADMIN_PASSWORD`.
 2. Máy chiếu mở `/trinh-chieu` và bật toàn màn hình.
 3. Ba máy đội thi mở `/nhom/1`, `/nhom/2`, `/nhom/3`, nhập PIN tương ứng.
+   PIN được kiểm tra ngay khi bấm **Vào phòng**. Nếu trang báo chưa cấu hình PIN, hãy kiểm tra ba biến `TEAM_1_PIN`, `TEAM_2_PIN`, `TEAM_3_PIN` trên Vercel và Redeploy.
 4. Khi admin chọn câu Vượt Chướng Ngại Vật hoặc bắt đầu câu Tăng Tốc, trang đội thi tự hiện ô nhập đáp án.
 5. Đáp án và thời gian gửi hiện realtime trên trang admin/trình chiếu khi chuyển sang màn hình đáp án.
 6. Ở Về Đích, nếu nhóm chính trả lời sai, hai nhóm còn lại thấy nút **BẤM CHUÔNG** trong 5 giây. Database chỉ chấp nhận lượt bấm đầu tiên.
