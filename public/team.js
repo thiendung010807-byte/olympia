@@ -46,11 +46,12 @@ const render = (state) => {
   if (obstacleReady || speedReady) {
     show('#answerPanel');
     const round = obstacleReady ? 'obstacle' : 'speed';
-    const index = obstacleReady ? state.obstacleQuestionIndex : state.speedQuestionIndex;
+    const displayIndex = obstacleReady ? state.obstacleQuestionIndex : state.speedQuestionIndex;
+    const index = obstacleReady ? (Number(state.activeObstacleSet) || 0) * 7 + Number(state.obstacleQuestionIndex) : state.speedQuestionIndex;
     $('#answerPanel').dataset.round = round;
     $('#answerPanel').dataset.questionIndex = index;
     $('#roundLabel').textContent = obstacleReady ? 'VƯỢT CHƯỚNG NGẠI VẬT' : 'TĂNG TỐC';
-    $('#questionLabel').textContent = `CÂU ${Number(index) + 1}`;
+    $('#questionLabel').textContent = obstacleReady ? `BỘ ${(Number(state.activeObstacleSet) || 0) + 1} · CÂU ${Number(displayIndex) + 1}` : `CÂU ${Number(displayIndex) + 1}`;
     const key = `${round}-${index}`;
     if (activeQuestionKey !== key) {
       $('#answerInput').value = '';

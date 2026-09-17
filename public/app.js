@@ -33,10 +33,10 @@ const commonQuestions = Array.from(
   { length: 15 },
   (_, index) => `Nội dung câu hỏi chung số ${index + 1} dành cho cả ba nhóm`,
 );
-const obstacleQuestions = Array.from(
+const obstacleQuestionSets = Array.from({ length: 4 }, (_, setIndex) => Array.from(
   { length: 7 },
-  (_, index) => `Nội dung câu hỏi Vượt Chướng Ngại Vật số ${index + 1}`,
-);
+  (_, index) => `Nội dung câu hỏi Vượt Chướng Ngại Vật bộ ${setIndex + 1}, số ${index + 1}`,
+));
 const speedQuestions = Array.from(
   { length: 24 },
   (_, index) => `Nội dung câu hỏi Tăng Tốc số ${index + 1}`,
@@ -44,19 +44,20 @@ const speedQuestions = Array.from(
 const finishQuestions = teams.map((team) => Array.from({ length: 4 }, (_, index) => `Nội dung câu hỏi Về Đích số ${index + 1} dành cho ${team.name}`));
 const privateAnswers = teams.map(() => Array(15).fill(''));
 const commonAnswers = Array(15).fill('');
-const obstacleAnswers = Array(7).fill('');
+const obstacleAnswerSets = Array.from({ length: 4 }, () => Array(7).fill(''));
 const speedAnswers = Array(24).fill('');
 const finishAnswers = teams.map(() => Array(4).fill(''));
 const speedResponseTimes = Array.from({ length: 24 }, () => Array(3).fill(null));
-const questionBank = { private: privateQuestions, common: commonQuestions, obstacle: obstacleQuestions, speed: speedQuestions, finish: finishQuestions };
-const answerBank = { private: privateAnswers, common: commonAnswers, obstacle: obstacleAnswers, speed: speedAnswers, finish: finishAnswers };
+const questionBank = { private: privateQuestions, common: commonQuestions, obstacle: obstacleQuestionSets, speed: speedQuestions, finish: finishQuestions };
+const answerBank = { private: privateAnswers, common: commonAnswers, obstacle: obstacleAnswerSets, speed: speedAnswers, finish: finishAnswers };
 const blankMedia = () => ({ mode: 'text', audioUrl: '', visualUrl: '', visualType: '' });
 const mediaBank = {
   private: teams.map(() => Array.from({ length: 15 }, blankMedia)), common: Array.from({ length: 15 }, blankMedia),
-  obstacle: Array.from({ length: 7 }, blankMedia), speed: Array.from({ length: 24 }, blankMedia),
+  obstacle: Array.from({ length: 4 }, () => Array.from({ length: 7 }, blankMedia)), speed: Array.from({ length: 24 }, blankMedia),
   finish: teams.map(() => Array.from({ length: 4 }, blankMedia)),
 };
 const roundVideos = { kickoffOutroUrl: '', obstacleOutroUrl: '' };
+const obstacleImages = Array(4).fill('');
 const questionAudio = new Audio();
 let lastQuestionMediaKey = '';
 
@@ -81,7 +82,8 @@ let commonSelectedTeam = null;
 let privateCanJudge = false;
 let commonCanJudge = false;
 let obstacleQuestionIndex = null;
-let obstacleRevealed = Array(7).fill(false);
+let activeObstacleSet = 0;
+let obstacleRevealedSets = Array.from({ length: 4 }, () => Array(7).fill(false));
 let obstacleWrongTeams = new Set();
 let speedQuestionIndex = 0;
 let speedWrongTeams = new Set();
@@ -119,7 +121,7 @@ const setState = (state, label) => {
 const currentAnswer = () => {
   if (currentSlide === 6) return privateAnswers[privateTeamIndex]?.[privateQuestionIndex] ?? '';
   if (currentSlide === 9) return commonAnswers[commonQuestionIndex] ?? '';
-  if ([14, 15].includes(currentSlide) && obstacleQuestionIndex !== null) return obstacleAnswers[obstacleQuestionIndex] ?? '';
+  if ([14, 15].includes(currentSlide) && obstacleQuestionIndex !== null) return obstacleAnswerSets[activeObstacleSet]?.[obstacleQuestionIndex] ?? '';
   if ([20, 21].includes(currentSlide)) return speedAnswers[speedQuestionIndex] ?? '';
   const round = { 27: 0, 30: 1, 33: 2 }[currentSlide];
   if (round !== undefined) {
@@ -144,16 +146,19 @@ const editorRoundMeta = {
 const editorLocation = () => {
   const round = $('#editorRound').value;
   const team = Number($('#editorTeam').value) || 0;
+  const obstacleSet = Number($('#editorObstacleSet').value) || 0;
   const question = Number($('#editorQuestion').value) || 0;
-  return { round, team, question, meta: editorRoundMeta[round] };
+  return { round, team, obstacleSet, question, meta: editorRoundMeta[round] };
 };
 
 const loadEditorContent = () => {
-  const { round, team, question, meta } = editorLocation();
+  const { round, team, obstacleSet, question, meta } = editorLocation();
   $('#editorTeamWrap').hidden = !meta.teams;
-  const questions = meta.teams ? questionBank[round][team] : questionBank[round];
-  const answers = meta.teams ? answerBank[round][team] : answerBank[round];
-  const media = meta.teams ? mediaBank[round][team] : mediaBank[round];
+  $('#editorObstacleSetWrap').hidden = round !== 'obstacle';
+  $('#editorObstacleImageWrap').hidden = round !== 'obstacle';
+  const questions = round === 'obstacle' ? questionBank.obstacle[obstacleSet] : (meta.teams ? questionBank[round][team] : questionBank[round]);
+  const answers = round === 'obstacle' ? answerBank.obstacle[obstacleSet] : (meta.teams ? answerBank[round][team] : answerBank[round]);
+  const media = round === 'obstacle' ? mediaBank.obstacle[obstacleSet] : (meta.teams ? mediaBank[round][team] : mediaBank[round]);
   $('#editorQuestionText').value = questions[question] ?? '';
   $('#editorAnswerText').value = answers[question] ?? '';
   $('#editorQuestionMode').value = media[question]?.mode || 'text';
@@ -177,10 +182,10 @@ const openQuestionEditor = () => {
 const closeQuestionEditor = () => { $('#questionEditor').hidden = true; };
 
 const saveQuestionContent = async () => {
-  const { round, team, question, meta } = editorLocation();
-  const questions = meta.teams ? questionBank[round][team] : questionBank[round];
-  const answers = meta.teams ? answerBank[round][team] : answerBank[round];
-  const media = meta.teams ? mediaBank[round][team] : mediaBank[round];
+  const { round, team, obstacleSet, question, meta } = editorLocation();
+  const questions = round === 'obstacle' ? questionBank.obstacle[obstacleSet] : (meta.teams ? questionBank[round][team] : questionBank[round]);
+  const answers = round === 'obstacle' ? answerBank.obstacle[obstacleSet] : (meta.teams ? answerBank[round][team] : answerBank[round]);
+  const media = round === 'obstacle' ? mediaBank.obstacle[obstacleSet] : (meta.teams ? mediaBank[round][team] : mediaBank[round]);
   const status = $('#editorSaveStatus');
   status.textContent = 'Đang lưu…';
   try {
@@ -194,6 +199,8 @@ const saveQuestionContent = async () => {
     media[question].visualUrl = (await window.OlympiaSync.uploadMedia(visualFile)).publicUrl;
     media[question].visualType = visualFile.type.startsWith('video/') ? 'video' : 'image';
   }
+  const obstacleImage = $('#editorObstacleImageFile').files[0];
+  if (round === 'obstacle' && obstacleImage) obstacleImages[obstacleSet] = (await window.OlympiaSync.uploadMedia(obstacleImage)).publicUrl;
   const kickoffOutro = $('#editorKickoffOutroFile').files[0];
   const obstacleOutro = $('#editorObstacleOutroFile').files[0];
   if (kickoffOutro) roundVideos.kickoffOutroUrl = (await window.OlympiaSync.uploadMedia(kickoffOutro)).publicUrl;
@@ -369,12 +376,22 @@ const playQuestionAudio = (media, key) => {
 };
 
 const renderObstacleGame = () => {
+  const obstacleQuestions = obstacleQuestionSets[activeObstacleSet];
+  const obstacleAnswers = obstacleAnswerSets[activeObstacleSet];
+  const obstacleRevealed = obstacleRevealedSets[activeObstacleSet];
   const hasSelection = obstacleQuestionIndex !== null;
+  $('#activeObstacleSetLabel').textContent = `BỘ ${activeObstacleSet + 1}`;
+  $$('#obstacleSetSwitcher [data-obstacle-set]').forEach((button) => button.classList.toggle('active', Number(button.dataset.obstacleSet) === activeObstacleSet));
+  $('#puzzleBoard').style.backgroundImage = obstacleImages[activeObstacleSet]
+    ? `linear-gradient(rgba(2,20,60,.08),rgba(2,20,60,.08)),url("${obstacleImages[activeObstacleSet]}")`
+    : "url('./assets/obstacle-puzzle-frame.png')";
+  $('#puzzleBoard').style.backgroundSize = 'cover';
+  $('#puzzleBoard').style.backgroundPosition = 'center';
   $('#obstacleQuestionNumber').textContent = hasSelection ? String(obstacleQuestionIndex + 1).padStart(2, '0') : '--';
   $('#obstacleQuestionLabel').textContent = hasSelection ? (obstacleQuestionIndex < 6 ? `TỪ HÀNG NGANG ${obstacleQuestionIndex + 1}` : 'GỢI Ý TRUNG TÂM') : 'CHỌN CÂU HỎI';
-  const obstacleMedia = hasSelection ? mediaBank.obstacle[obstacleQuestionIndex] : null;
+  const obstacleMedia = hasSelection ? mediaBank.obstacle[activeObstacleSet][obstacleQuestionIndex] : null;
   $('#obstacleQuestion').textContent = hasSelection ? (obstacleMedia?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : obstacleQuestions[obstacleQuestionIndex]) : 'Admin nhấn một mảnh ghép từ 1–7 để chọn câu hỏi.';
-  if (hasSelection) playQuestionAudio(obstacleMedia, `obstacle-${obstacleQuestionIndex}`);
+  if (hasSelection) playQuestionAudio(obstacleMedia, `obstacle-${activeObstacleSet}-${obstacleQuestionIndex}`);
   $('#obstacleTimer').textContent = '15';
   $('#obstacleTimerButton small').textContent = 'BẮT ĐẦU';
   $('#obstacleTimerButton').disabled = !hasSelection;
@@ -432,6 +449,7 @@ const renderObstacleResponses = () => {
 
 const confirmObstacleResponses = () => {
   if (obstacleQuestionIndex === null) return;
+  const obstacleRevealed = obstacleRevealedSets[activeObstacleSet];
   teams.forEach((team, index) => { if (!obstacleWrongTeams.has(index)) team.score += 10; });
   obstacleRevealed[obstacleQuestionIndex] = true;
   obstacleWrongTeams = new Set();
@@ -794,7 +812,7 @@ const getSynchronizedState = () => ({
   resetToken: lastResetToken,
   scores: teams.map((team) => team.score),
   privateTeamIndex, privateQuestionIndex, commonQuestionIndex, commonSelectedTeam,
-  obstacleQuestionIndex, obstacleRevealed, obstacleWrongTeams: [...obstacleWrongTeams],
+  activeObstacleSet, obstacleQuestionIndex, obstacleRevealedSets, obstacleWrongTeams: [...obstacleWrongTeams],
   speedQuestionIndex, speedWrongTeams: [...speedWrongTeams],
   finishOrder, finishPacks, finishProgress, finishStarsUsed: [...finishStarsUsed],
   finishStarActive, finishQuestionRevealed, finishCanJudge, finishSteal,
@@ -832,12 +850,14 @@ const copyNestedList = (target, source) => {
 const applyQuestionContent = (remoteQuestions, remoteAnswers) => {
   copyNestedList(privateQuestions, remoteQuestions?.private);
   copyList(commonQuestions, remoteQuestions?.common);
-  copyList(obstacleQuestions, remoteQuestions?.obstacle);
+  if (Array.isArray(remoteQuestions?.obstacle?.[0])) remoteQuestions.obstacle.forEach((list, index) => copyList(obstacleQuestionSets[index], list));
+  else copyList(obstacleQuestionSets[0], remoteQuestions?.obstacle);
   copyList(speedQuestions, remoteQuestions?.speed);
   copyNestedList(finishQuestions, remoteQuestions?.finish);
   copyNestedList(privateAnswers, remoteAnswers?.private);
   copyList(commonAnswers, remoteAnswers?.common);
-  copyList(obstacleAnswers, remoteAnswers?.obstacle);
+  if (Array.isArray(remoteAnswers?.obstacle?.[0])) remoteAnswers.obstacle.forEach((list, index) => copyList(obstacleAnswerSets[index], list));
+  else copyList(obstacleAnswerSets[0], remoteAnswers?.obstacle);
   copyList(speedAnswers, remoteAnswers?.speed);
   copyNestedList(finishAnswers, remoteAnswers?.finish);
 };
@@ -846,16 +866,18 @@ const copyMedia = (target, source) => {
   if (!Array.isArray(source)) return;
   source.forEach((item, index) => { if (target[index] && item && typeof item === 'object') Object.assign(target[index], item); });
 };
-const getContent = () => ({ questionBank, answerBank, mediaBank, roundVideos });
+const getContent = () => ({ questionBank, answerBank, mediaBank, roundVideos, obstacleImages });
 const applyContent = (content) => {
   if (!content) return;
   applyQuestionContent(content.questionBank, content.answerBank);
   copyMedia(mediaBank.common, content.mediaBank?.common);
-  copyMedia(mediaBank.obstacle, content.mediaBank?.obstacle);
+  if (Array.isArray(content.mediaBank?.obstacle?.[0])) content.mediaBank.obstacle.forEach((list, index) => copyMedia(mediaBank.obstacle[index], list));
+  else copyMedia(mediaBank.obstacle[0], content.mediaBank?.obstacle);
   copyMedia(mediaBank.speed, content.mediaBank?.speed);
   content.mediaBank?.private?.forEach((list, index) => copyMedia(mediaBank.private[index], list));
   content.mediaBank?.finish?.forEach((list, index) => copyMedia(mediaBank.finish[index], list));
   Object.assign(roundVideos, content.roundVideos || {});
+  if (Array.isArray(content.obstacleImages)) content.obstacleImages.forEach((url, index) => { if (index < obstacleImages.length && typeof url === 'string') obstacleImages[index] = url; });
   if (roundVideos.kickoffOutroUrl) kickoffOutroVideo.src = roundVideos.kickoffOutroUrl;
   if (roundVideos.obstacleOutroUrl) obstacleOutroVideo.src = roundVideos.obstacleOutroUrl;
   renderCurrentSynchronizedSlide();
@@ -864,7 +886,7 @@ const applyContent = (content) => {
 const resetLocalGame = () => {
   teams.forEach((team) => { team.score = 0; });
   privateTeamIndex = 0; privateQuestionIndex = 0; commonQuestionIndex = 0; commonSelectedTeam = null;
-  obstacleQuestionIndex = null; obstacleRevealed = Array(7).fill(false); obstacleWrongTeams.clear();
+  activeObstacleSet = 0; obstacleQuestionIndex = null; obstacleRevealedSets = Array.from({ length: 4 }, () => Array(7).fill(false)); obstacleWrongTeams.clear();
   speedQuestionIndex = 0; speedWrongTeams.clear();
   speedResponseTimes.forEach((times) => times.fill(null));
   finishOrder = []; finishProgress.fill(0); finishStarsUsed.clear(); finishStarActive = false; finishQuestionRevealed = false; finishCanJudge = false;
@@ -884,8 +906,10 @@ const applySynchronizedState = (state) => {
   privateQuestionIndex = state.privateQuestionIndex ?? privateQuestionIndex;
   commonQuestionIndex = state.commonQuestionIndex ?? commonQuestionIndex;
   commonSelectedTeam = state.commonSelectedTeam ?? null;
+  activeObstacleSet = Math.min(3, Math.max(0, Number(state.activeObstacleSet) || 0));
   obstacleQuestionIndex = state.obstacleQuestionIndex ?? null;
-  obstacleRevealed = state.obstacleRevealed ?? obstacleRevealed;
+  if (Array.isArray(state.obstacleRevealedSets)) obstacleRevealedSets = state.obstacleRevealedSets;
+  else if (Array.isArray(state.obstacleRevealed)) obstacleRevealedSets[0] = state.obstacleRevealed;
   obstacleWrongTeams = new Set(state.obstacleWrongTeams ?? []);
   speedQuestionIndex = state.speedQuestionIndex ?? speedQuestionIndex;
   speedWrongTeams = new Set(state.speedWrongTeams ?? []);
@@ -982,6 +1006,7 @@ $('#contentEditorButton').addEventListener('click', openQuestionEditor);
 $('#closeQuestionEditor').addEventListener('click', closeQuestionEditor);
 $('#editorRound').addEventListener('change', refreshEditorQuestions);
 $('#editorTeam').addEventListener('change', loadEditorContent);
+$('#editorObstacleSet').addEventListener('change', loadEditorContent);
 $('#editorQuestion').addEventListener('change', loadEditorContent);
 $('#editorQuestionMode').addEventListener('change', () => { $('#editorAudioWrap').hidden = $('#editorQuestionMode').value !== 'audio'; });
 $('#saveQuestionContent').addEventListener('click', saveQuestionContent);
@@ -1019,6 +1044,13 @@ $('#commonSkip').addEventListener('click', advanceCommon);
 $('#commonCorrect').addEventListener('click', () => judgeCommon(true));
 $('#commonWrong').addEventListener('click', () => judgeCommon(false));
 $('#obstacleTimerButton').addEventListener('click', startObstacleTimer);
+$$('[data-obstacle-set]').forEach((button) => button.addEventListener('click', () => {
+  activeObstacleSet = Number(button.dataset.obstacleSet);
+  obstacleQuestionIndex = null;
+  obstacleWrongTeams.clear();
+  renderObstacleGame();
+  signalStateChange();
+}));
 $('#confirmObstacleResponses').addEventListener('click', confirmObstacleResponses);
 $('#speedTimerButton').addEventListener('click', startSpeedTimer);
 $('#confirmSpeedResponses').addEventListener('click', confirmSpeedResponses);

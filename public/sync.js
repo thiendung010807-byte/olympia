@@ -68,8 +68,9 @@ const hydrateAnswers = () => {
   const state = window.OlympiaStage?.getState();
   if (!state) return;
   if (state.currentSlide === 15 && state.obstacleQuestionIndex !== null) {
+    const obstacleStorageIndex = (Number(state.activeObstacleSet) || 0) * 7 + Number(state.obstacleQuestionIndex);
     document.querySelectorAll('[data-response-team]').forEach((card) => {
-      const row = latestAnswers.find((item) => item.round === 'obstacle' && item.question_index === state.obstacleQuestionIndex && item.team_id === Number(card.dataset.responseTeam) + 1);
+      const row = latestAnswers.find((item) => item.round === 'obstacle' && item.question_index === obstacleStorageIndex && item.team_id === Number(card.dataset.responseTeam) + 1);
       card.querySelector('p').textContent = row?.answer || '';
     });
   }

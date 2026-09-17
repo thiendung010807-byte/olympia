@@ -89,7 +89,8 @@
       </section>
 
       <section class="slide blue-slide obstacle-game" data-slide="14" aria-label="Bàn chơi Vượt Chướng Ngại Vật">
-        <div class="round-label">VƯỢT CHƯỚNG NGẠI VẬT · CÂU <span id="obstacleQuestionNumber">01</span> / 07</div>
+        <div class="round-label">VƯỢT CHƯỚNG NGẠI VẬT · <span id="activeObstacleSetLabel">BỘ 1</span> · CÂU <span id="obstacleQuestionNumber">01</span> / 07</div>
+        <div class="obstacle-set-switcher" id="obstacleSetSwitcher" aria-label="Chọn bộ chướng ngại vật"><button type="button" data-obstacle-set="0">BỘ 1</button><button type="button" data-obstacle-set="1">BỘ 2</button><button type="button" data-obstacle-set="2">BỘ 3</button><button type="button" data-obstacle-set="3">BỘ 4</button></div>
         <div class="obstacle-layout">
           <div class="puzzle-board" id="puzzleBoard" aria-label="Bảy mảnh ghép"></div>
           <div class="clue-board">
@@ -246,11 +247,13 @@
         <div class="question-editor-grid">
           <label>Phần thi<select id="editorRound"><option value="private">Khởi Động · Lượt riêng</option><option value="common">Khởi Động · Lượt chung</option><option value="obstacle">Vượt Chướng Ngại Vật</option><option value="speed">Tăng Tốc</option><option value="finish">Về Đích</option></select></label>
           <label id="editorTeamWrap">Nhóm<select id="editorTeam"><option value="0">Nhóm 1</option><option value="1">Nhóm 2</option><option value="2">Nhóm 3</option></select></label>
+          <label id="editorObstacleSetWrap" hidden>Bộ Chướng ngại vật<select id="editorObstacleSet"><option value="0">Bộ 1</option><option value="1">Bộ 2</option><option value="2">Bộ 3</option><option value="3">Bộ 4</option></select></label>
           <label>Câu số<select id="editorQuestion"></select></label>
         </div>
         <label class="editor-field">Nội dung câu hỏi<textarea id="editorQuestionText" rows="5" maxlength="1000"></textarea></label>
         <label class="editor-field">Đáp án<textarea id="editorAnswerText" rows="3" maxlength="500" placeholder="Nhập đáp án để MC đối chiếu…"></textarea></label>
         <div class="question-editor-grid media-editor-grid"><label>Loại câu hỏi<select id="editorQuestionMode"><option value="text">Chữ</option><option value="audio">Âm thanh tự chạy</option></select></label><label id="editorAudioWrap">Tệp MP3<input id="editorAudioFile" type="file" accept="audio/mpeg,audio/mp3,audio/*"/></label><label id="editorVisualWrap" hidden>Ảnh / video Tăng Tốc<input id="editorVisualFile" type="file" accept="image/*,video/*"/></label></div>
+        <label class="editor-field" id="editorObstacleImageWrap" hidden>Ảnh Chướng ngại vật của bộ đang chọn<input id="editorObstacleImageFile" type="file" accept="image/*"/></label>
         <details class="round-video-editor"><summary>Video toàn màn hình sau phần thi</summary><label>Hết Khởi Động<input id="editorKickoffOutroFile" type="file" accept="video/*"/></label><label>Hết Vượt Chướng Ngại Vật<input id="editorObstacleOutroFile" type="file" accept="video/*"/></label></details>
         <footer><span id="editorSaveStatus"></span><button id="saveQuestionContent" type="button">LƯU &amp; ĐỒNG BỘ</button></footer>
       </div>
