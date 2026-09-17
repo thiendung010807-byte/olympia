@@ -13,7 +13,7 @@ Hai khung câu hỏi Tăng Tốc và Về Đích đã được dựng bằng CSS
 
 1. Tạo project tại [Supabase](https://supabase.com/dashboard).
 2. Mở **SQL Editor**.
-3. Sao chép toàn bộ nội dung `supabase/schema.sql` và bấm **Run**.
+3. Sao chép toàn bộ nội dung `supabase/schema.sql` và bấm **Run**. Nếu đã deploy bản cũ, vẫn chạy lại toàn bộ file này một lần để tạo `game_content`, Realtime cho nội dung và bucket `olympia-media`.
 4. Vào **Project Settings → API** và lấy:
    - Project URL.
    - Publishable key hoặc anon key.
@@ -81,7 +81,7 @@ Vercel tự nhận các file trong thư mục `api` là Node.js Functions và c�
 ## 5. Cách vận hành
 
 1. Máy điều khiển mở `/admin`, nhập `ADMIN_PASSWORD`.
-   Dùng nút biểu tượng bút ở thanh điều khiển để mở **Câu hỏi & đáp án**. Chọn phần thi, nhóm và số câu, sau đó bấm **Lưu & đồng bộ**. Nội dung được lưu trong trạng thái chương trình và cập nhật sang màn hình trình chiếu.
+   Dùng nút biểu tượng bút để mở **Câu hỏi & đáp án**. Mỗi câu có thể là chữ hoặc âm thanh tự chạy; Tăng Tốc còn nhận ảnh/video. Hai video kết thúc Khởi Động và Vượt Chướng Ngại Vật cũng được tải tại đây. Bấm **Lưu & đồng bộ** để ghi bền vững vào `game_content` (không mất khi reload/reset). Nút **Đ** sửa điểm; nút **↺** reset tiến trình nhưng giữ nguyên ngân hàng câu hỏi.
 2. Máy chiếu mở `/trinh-chieu` và bật toàn màn hình.
    Nhấn **Bật trình chiếu** một lần trước khi bắt đầu để trình duyệt cho phép phát video và âm thanh. Realtime là kênh đồng bộ chính; hệ thống còn kiểm tra dự phòng mỗi 700 ms nếu kết nối WebSocket bị gián đoạn.
 3. Ba máy đội thi mở `/nhom/1`, `/nhom/2`, `/nhom/3`, nhập PIN tương ứng.
@@ -94,8 +94,10 @@ Vercel tự nhận các file trong thư mục `api` là Node.js Functions và c�
 ## 6. Dữ liệu và bảo mật
 
 - `game_state`: trạng thái slide, điểm, đồng hồ và tiến trình phần thi.
+- `game_content`: ngân hàng câu hỏi, đáp án và URL media được lưu bền vững.
 - `team_answers`: đáp án Vượt Chướng Ngại Vật/Tăng Tốc và thời gian phản hồi.
 - `buzzes`: lượt bấm chuông Về Đích; unique constraint bảo đảm chỉ một nhóm thắng mỗi câu.
+- Storage bucket `olympia-media`: MP3, ảnh và video admin tải lên (tối đa 100 MB/tệp theo schema mặc định).
 - Publishable/anon key có thể xuất hiện phía trình duyệt vì RLS giới hạn quyền. Service-role key chỉ nằm trong biến môi trường của Vercel.
 - Nên đổi toàn bộ mật khẩu/PIN trước chương trình và không chia sẻ URL `/admin` công khai.
 

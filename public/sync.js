@@ -49,6 +49,21 @@ let latestAnswers = [];
 let lastRemoteUpdatedAt = null;
 let pollBusy = false;
 
+const adminFetch = async (url, options = {}) => {
+  const response = await fetch(url, { ...options, headers: { ...(options.headers || {}), 'x-admin-password': adminPassword || '' } });
+  if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || `HTTP ${response.status}`);
+  return response.json();
+};
+const saveContent = (content) => adminFetch('/api/content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content }) });
+const uploadMedia = async (file) => {
+  const signed = await adminFetch('/api/upload-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fileName: file.name, contentType: file.type }) });
+  const { error } = await supabase.storage.from('olympia-media').uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type });
+  if (error) throw error;
+  return signed;
+};
+const resetGame = () => adminFetch('/api/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+window.OlympiaSync = { saveContent, uploadMedia, resetGame };
+
 const hydrateAnswers = () => {
   const state = window.OlympiaStage?.getState();
   if (!state) return;
@@ -110,6 +125,8 @@ const applyRemoteState = (state, updatedAt = null) => {
   window.setTimeout(hydrateAnswers, 0);
 };
 
+const savedContent = await fetch('/api/content', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).catch(() => null);
+if (savedContent?.content) window.OlympiaStage.applyContent(savedContent.content);
 const initial = await fetch('/api/state', { cache: 'no-store' }).then((response) => response.json());
 if (initial.state) {
   if (mode === 'present') applyRemoteState(initial.state, initial.updatedAt);
@@ -138,6 +155,7 @@ supabase.channel(`olympia-${config.gameId}`)
     if ([15, 21].includes(Number(row.state?.currentSlide))) window.setTimeout(loadAnswers, 40);
   })
   .on('postgres_changes', { event: '*', schema: 'public', table: 'team_answers', filter: `game_id=eq.${config.gameId}` }, loadAnswers)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'game_content', filter: `id=eq.${config.gameId}` }, ({ new: row }) => { if (row.content) window.OlympiaStage.applyContent(row.content); })
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'buzzes', filter: `game_id=eq.${config.gameId}` }, ({ new: row }) => {
     if (mode === 'admin' && window.OlympiaStage.registerFinishBuzz(row.team_id - 1)) schedulePublish();
   })

@@ -93,7 +93,7 @@
         <div class="obstacle-layout">
           <div class="puzzle-board" id="puzzleBoard" aria-label="Bảy mảnh ghép"></div>
           <div class="clue-board">
-            <div class="clue-title">CHƯỚNG NGẠI VẬT CÓ <b>8 CHỮ CÁI</b></div>
+            <div class="clue-title">CHƯỚNG NGẠI VẬT CÓ <b id="obstacleAnswerLength">0 CHỮ CÁI</b></div>
             <div class="clue-list" id="obstacleClueList"></div>
           </div>
         </div>
@@ -125,8 +125,8 @@
           <img src="./assets/speed-panel.png" alt="" class="rules-frame" />
           <div class="rules-titlebar"><small>LUẬT CHƠI</small><h2 id="speedRulesTitle">TĂNG TỐC</h2></div>
           <ul class="rules-list compact-rules speed-rules-list">
-            <li>Có <b>8 câu hỏi</b>; các nhóm nhập đáp án trên máy tính.</li>
-            <li>Bốn câu đầu có <b>20 giây</b>; bốn câu sau có <b>30 giây</b> suy nghĩ.</li>
+            <li>Có <b>24 câu hỏi</b>; các nhóm nhập đáp án trên máy tính.</li>
+            <li>12 câu đầu có <b>20 giây</b>; 12 câu sau có <b>30 giây</b> suy nghĩ.</li>
             <li>Trong các đáp án đúng: nhanh nhất được <b>40 điểm</b>, nhanh thứ hai <b>30 điểm</b>, nhanh thứ ba <b>20 điểm</b>.</li>
             <li>Đáp án phải đúng chính tả. Câu trả lời tương đồng về nghĩa với đáp án chương trình có thể được chấp nhận.</li>
             <li>Các dạng câu hỏi gồm: nhìn nhanh, sắp xếp, suy luận và câu hỏi đoạn băng.</li>
@@ -135,10 +135,10 @@
       </section>
 
       <section class="slide blue-slide speed-game" data-slide="20" aria-label="Bàn chơi Tăng Tốc">
-        <div class="speed-head"><p>TĂNG TỐC · CÂU <span id="speedQuestionNumber">01</span> / 08</p><h2 id="speedQuestionTime">20 GIÂY</h2></div>
+        <div class="speed-head"><p>TĂNG TỐC · CÂU <span id="speedQuestionNumber">01</span> / 24</p><h2 id="speedQuestionTime">20 GIÂY</h2></div>
         <div class="speed-stage">
           <div class="speed-question"><span>NỘI DUNG CÂU HỎI</span><p id="speedQuestion">Nội dung câu hỏi Tăng Tốc số 1</p></div>
-          <div class="speed-media"><strong>HÌNH ẢNH / VIDEO CÂU HỎI</strong><small>Sẽ được thêm từ trang admin sau</small></div>
+          <div class="speed-media" id="speedMedia"><strong>HÌNH ẢNH / VIDEO CÂU HỎI</strong><small>Chưa có tệp minh họa</small></div>
         </div>
         <div class="speed-controls">
           <div class="speed-team-scores" id="speedTeamScores"></div>
@@ -147,7 +147,7 @@
       </section>
 
       <section class="slide blue-slide response-slide speed-response-slide" data-slide="21" aria-labelledby="speedResponseTitle">
-        <p class="response-kicker">TĂNG TỐC · CÂU <span id="speedResponseQuestionNumber">01</span> / 08</p>
+        <p class="response-kicker">TĂNG TỐC · CÂU <span id="speedResponseQuestionNumber">01</span> / 24</p>
         <h2 id="speedResponseTitle">ĐÁP ÁN &amp; THỜI GIAN TRẢ LỜI</h2>
         <div class="response-cards speed-response-cards" id="speedResponseCards"></div>
         <p class="response-help">Bấm vào nhóm trả lời sai để làm tối ô; điểm được xếp theo thời gian của các đáp án đúng</p>
@@ -221,6 +221,8 @@
       </section>
 
       <section class="slide blue-slide results-slide final-results-slide" data-slide="34"><h2>KẾT QUẢ CHUNG CUỘC</h2><p class="results-kicker">ĐƯỜNG LÊN ĐỈNH OLYMPIA 26</p><div class="scoreboard" id="championScoreboard"></div><div class="results-footer">CHÚC MỪNG CÁC NHÓM</div></section>
+      <section class="slide section-video-slide" data-slide="35" aria-label="Video kết thúc Khởi Động"><video id="kickoffOutroVideo" preload="auto" playsinline></video><button class="video-start-overlay" id="kickoffOutroPlay" type="button"><span class="play-icon"></span>Phát video kết thúc Khởi Động</button></section>
+      <section class="slide section-video-slide" data-slide="36" aria-label="Video kết thúc Vượt Chướng Ngại Vật"><video id="obstacleOutroVideo" preload="auto" playsinline></video><button class="video-start-overlay" id="obstacleOutroPlay" type="button"><span class="play-icon"></span>Phát video kết thúc Vượt Chướng Ngại Vật</button></section>
 
       <nav class="control-dock" aria-label="Điều khiển trình chiếu">
         <div class="live-state"><span class="state-dot"></span><span id="stateLabel">Đang chờ</span></div>
@@ -231,6 +233,8 @@
           <button class="icon-button intro-control" id="muteButton" type="button" aria-label="Tắt âm thanh"><svg viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Zm4.5 4.5a4 4 0 0 1 0 5m2.5-8a8 8 0 0 1 0 11"/></svg></button>
           <button class="icon-button" id="fullscreenButton" type="button" aria-label="Toàn màn hình" title="Toàn màn hình (F)"><svg viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M8 21H3v-5m13 5h5v-5"/></svg></button>
           <button class="icon-button" id="contentEditorButton" type="button" aria-label="Sửa câu hỏi và đáp án" title="Sửa câu hỏi và đáp án"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4M4 10V4h6"/></svg></button>
+          <button class="icon-button" id="scoreEditorButton" type="button" aria-label="Sửa điểm" title="Sửa điểm các nhóm">Đ</button>
+          <button class="icon-button danger-control" id="resetGameButton" type="button" aria-label="Reset game" title="Reset toàn bộ game">↺</button>
           <button class="icon-button" id="nextSlide" type="button" aria-label="Slide tiếp theo" title="Slide tiếp theo (→)"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
         </div><span class="dock-context" id="dockContext">INTRO · 00:31</span>
       </nav>
@@ -246,9 +250,12 @@
         </div>
         <label class="editor-field">Nội dung câu hỏi<textarea id="editorQuestionText" rows="5" maxlength="1000"></textarea></label>
         <label class="editor-field">Đáp án<textarea id="editorAnswerText" rows="3" maxlength="500" placeholder="Nhập đáp án để MC đối chiếu…"></textarea></label>
+        <div class="question-editor-grid media-editor-grid"><label>Loại câu hỏi<select id="editorQuestionMode"><option value="text">Chữ</option><option value="audio">Âm thanh tự chạy</option></select></label><label id="editorAudioWrap">Tệp MP3<input id="editorAudioFile" type="file" accept="audio/mpeg,audio/mp3,audio/*"/></label><label id="editorVisualWrap" hidden>Ảnh / video Tăng Tốc<input id="editorVisualFile" type="file" accept="image/*,video/*"/></label></div>
+        <details class="round-video-editor"><summary>Video toàn màn hình sau phần thi</summary><label>Hết Khởi Động<input id="editorKickoffOutroFile" type="file" accept="video/*"/></label><label>Hết Vượt Chướng Ngại Vật<input id="editorObstacleOutroFile" type="file" accept="video/*"/></label></details>
         <footer><span id="editorSaveStatus"></span><button id="saveQuestionContent" type="button">LƯU &amp; ĐỒNG BỘ</button></footer>
       </div>
     </div>
+    <div class="question-editor" id="scoreEditor" hidden><div class="question-editor-dialog score-editor-dialog" role="dialog" aria-modal="true"><header><div><p>QUẢN TRỊ TRẬN ĐẤU</p><h2>Sửa điểm các nhóm</h2></div><button id="closeScoreEditor" type="button">×</button></header><div class="score-input-grid"><label>Nhóm 1<input id="scoreInput1" type="number" step="5"/></label><label>Nhóm 2<input id="scoreInput2" type="number" step="5"/></label><label>Nhóm 3<input id="scoreInput3" type="number" step="5"/></label></div><footer><span></span><button id="saveScores" type="button">LƯU ĐIỂM</button></footer></div></div>
     <script src="./app.js"></script>
     <script type="module" src="./sync.js"></script>
   </body>

@@ -9,6 +9,8 @@ const kickoffVideo = $('#kickoffVideo');
 const obstacleVideo = $('#obstacleVideo');
 const speedVideo = $('#speedVideo');
 const finishVideo = $('#finishVideo');
+const kickoffOutroVideo = $('#kickoffOutroVideo');
+const obstacleOutroVideo = $('#obstacleOutroVideo');
 const slideNumber = $('#slideNumber');
 const stateLabel = $('#stateLabel');
 const dockContext = $('#dockContext');
@@ -35,20 +37,28 @@ const obstacleQuestions = Array.from(
   { length: 7 },
   (_, index) => `Nội dung câu hỏi Vượt Chướng Ngại Vật số ${index + 1}`,
 );
-const obstacleLetterCounts = [8, 6, 7, 5, 8, 6, 8];
 const speedQuestions = Array.from(
-  { length: 8 },
+  { length: 24 },
   (_, index) => `Nội dung câu hỏi Tăng Tốc số ${index + 1}`,
 );
 const finishQuestions = teams.map((team) => Array.from({ length: 4 }, (_, index) => `Nội dung câu hỏi Về Đích số ${index + 1} dành cho ${team.name}`));
 const privateAnswers = teams.map(() => Array(15).fill(''));
 const commonAnswers = Array(15).fill('');
 const obstacleAnswers = Array(7).fill('');
-const speedAnswers = Array(8).fill('');
+const speedAnswers = Array(24).fill('');
 const finishAnswers = teams.map(() => Array(4).fill(''));
-const speedResponseTimes = Array.from({ length: 8 }, () => Array(3).fill(null));
+const speedResponseTimes = Array.from({ length: 24 }, () => Array(3).fill(null));
 const questionBank = { private: privateQuestions, common: commonQuestions, obstacle: obstacleQuestions, speed: speedQuestions, finish: finishQuestions };
 const answerBank = { private: privateAnswers, common: commonAnswers, obstacle: obstacleAnswers, speed: speedAnswers, finish: finishAnswers };
+const blankMedia = () => ({ mode: 'text', audioUrl: '', visualUrl: '', visualType: '' });
+const mediaBank = {
+  private: teams.map(() => Array.from({ length: 15 }, blankMedia)), common: Array.from({ length: 15 }, blankMedia),
+  obstacle: Array.from({ length: 7 }, blankMedia), speed: Array.from({ length: 24 }, blankMedia),
+  finish: teams.map(() => Array.from({ length: 4 }, blankMedia)),
+};
+const roundVideos = { kickoffOutroUrl: '', obstacleOutroUrl: '' };
+const questionAudio = new Audio();
+let lastQuestionMediaKey = '';
 
 const slideContexts = [
   'INTRO · 00:31', 'GIỚI THIỆU NHÓM', 'INTRO KHỞI ĐỘNG', 'KHỞI ĐỘNG', 'LUẬT CHƠI',
@@ -60,6 +70,7 @@ const slideContexts = [
   'CHỌN GÓI · LƯỢT 1', 'VỀ ĐÍCH · LƯỢT 1', 'KẾT QUẢ',
   'CHỌN GÓI · LƯỢT 2', 'VỀ ĐÍCH · LƯỢT 2', 'KẾT QUẢ',
   'CHỌN GÓI · LƯỢT 3', 'VỀ ĐÍCH · LƯỢT 3', 'KẾT QUẢ CHUNG CUỘC',
+  'VIDEO KẾT THÚC KHỞI ĐỘNG', 'VIDEO KẾT THÚC VƯỢT CHƯỚNG NGẠI VẬT',
 ];
 
 let currentSlide = 1;
@@ -79,6 +90,7 @@ const finishPacks = teams.map(() => [20, 20, 20, 20]);
 const finishProgress = teams.map(() => 0);
 const finishStarsUsed = new Set();
 let finishStarActive = false;
+let finishQuestionRevealed = false;
 let finishCanJudge = false;
 let finishSteal = { active: false, round: null, activeTeam: null, winner: null, points: 0 };
 let stealInterval = null;
@@ -87,6 +99,7 @@ let timerActive = false;
 let timerInterval = null;
 let introPlayback = { playing: false, startedAt: null, position: 0, revision: 0 };
 let lastAppliedIntroRevision = -1;
+let lastResetToken = null;
 
 const signalStateChange = () => window.dispatchEvent(new CustomEvent('olympia-state-change'));
 
@@ -125,7 +138,7 @@ const renderAdminAnswerKey = () => {
 
 const editorRoundMeta = {
   private: { count: 15, teams: true }, common: { count: 15, teams: false }, obstacle: { count: 7, teams: false },
-  speed: { count: 8, teams: false }, finish: { count: 4, teams: true },
+  speed: { count: 24, teams: false }, finish: { count: 4, teams: true },
 };
 
 const editorLocation = () => {
@@ -140,8 +153,12 @@ const loadEditorContent = () => {
   $('#editorTeamWrap').hidden = !meta.teams;
   const questions = meta.teams ? questionBank[round][team] : questionBank[round];
   const answers = meta.teams ? answerBank[round][team] : answerBank[round];
+  const media = meta.teams ? mediaBank[round][team] : mediaBank[round];
   $('#editorQuestionText').value = questions[question] ?? '';
   $('#editorAnswerText').value = answers[question] ?? '';
+  $('#editorQuestionMode').value = media[question]?.mode || 'text';
+  $('#editorAudioWrap').hidden = $('#editorQuestionMode').value !== 'audio';
+  $('#editorVisualWrap').hidden = round !== 'speed';
   $('#editorSaveStatus').textContent = '';
 };
 
@@ -159,16 +176,34 @@ const openQuestionEditor = () => {
 
 const closeQuestionEditor = () => { $('#questionEditor').hidden = true; };
 
-const saveQuestionContent = () => {
+const saveQuestionContent = async () => {
   const { round, team, question, meta } = editorLocation();
   const questions = meta.teams ? questionBank[round][team] : questionBank[round];
   const answers = meta.teams ? answerBank[round][team] : answerBank[round];
+  const media = meta.teams ? mediaBank[round][team] : mediaBank[round];
+  const status = $('#editorSaveStatus');
+  status.textContent = 'Đang lưu…';
+  try {
   questions[question] = $('#editorQuestionText').value.trim();
   answers[question] = $('#editorAnswerText').value.trim();
+  media[question].mode = $('#editorQuestionMode').value;
+  const audioFile = $('#editorAudioFile').files[0];
+  const visualFile = $('#editorVisualFile').files[0];
+  if (audioFile) media[question].audioUrl = (await window.OlympiaSync.uploadMedia(audioFile)).publicUrl;
+  if (visualFile) {
+    media[question].visualUrl = (await window.OlympiaSync.uploadMedia(visualFile)).publicUrl;
+    media[question].visualType = visualFile.type.startsWith('video/') ? 'video' : 'image';
+  }
+  const kickoffOutro = $('#editorKickoffOutroFile').files[0];
+  const obstacleOutro = $('#editorObstacleOutroFile').files[0];
+  if (kickoffOutro) roundVideos.kickoffOutroUrl = (await window.OlympiaSync.uploadMedia(kickoffOutro)).publicUrl;
+  if (obstacleOutro) roundVideos.obstacleOutroUrl = (await window.OlympiaSync.uploadMedia(obstacleOutro)).publicUrl;
+  await window.OlympiaSync.saveContent(getContent());
   renderCurrentSynchronizedSlide();
   renderAdminAnswerKey();
   signalStateChange();
-  $('#editorSaveStatus').textContent = 'Đã lưu và gửi đồng bộ';
+  status.textContent = 'Đã lưu bền vững và đồng bộ';
+  } catch (error) { status.textContent = `Lỗi lưu: ${error.message}`; }
 };
 
 const clearCountdown = () => {
@@ -218,7 +253,9 @@ const renderPrivateRound = () => {
   $('#privateTeamName').textContent = team.name;
   $('#privateQuestionNumber').textContent = `CÂU ${String(privateQuestionIndex + 1).padStart(2, '0')} / 15`;
   $('#privateTeamProgress').textContent = `${team.name} · LƯỢT RIÊNG`;
-  $('#privateQuestion').textContent = privateQuestions[privateTeamIndex][privateQuestionIndex];
+  const media = mediaBank.private[privateTeamIndex][privateQuestionIndex];
+  $('#privateQuestion').textContent = media?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : privateQuestions[privateTeamIndex][privateQuestionIndex];
+  playQuestionAudio(media, `private-${privateTeamIndex}-${privateQuestionIndex}`);
   $('#privateTimer').textContent = '5';
   $('#privateTimerButton small').textContent = 'BẮT ĐẦU';
   privateCanJudge = false;
@@ -260,7 +297,9 @@ const judgePrivate = (correct) => {
 
 const renderCommonRound = () => {
   $('#commonQuestionNumber').textContent = `CÂU ${String(commonQuestionIndex + 1).padStart(2, '0')} / 15`;
-  $('#commonQuestion').textContent = commonQuestions[commonQuestionIndex];
+  const media = mediaBank.common[commonQuestionIndex];
+  $('#commonQuestion').textContent = media?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : commonQuestions[commonQuestionIndex];
+  playQuestionAudio(media, `common-${commonQuestionIndex}`);
   $('#commonPhaseLabel').textContent = commonSelectedTeam === null ? 'GIÀNH QUYỀN TRẢ LỜI' : `${teams[commonSelectedTeam].name} ĐANG TRẢ LỜI`;
   $('#selectHint').textContent = commonSelectedTeam === null ? 'Chọn nhóm giành quyền trả lời' : `${teams[commonSelectedTeam].name} đã giành quyền`;
   $('#commonTimer').textContent = '5';
@@ -321,19 +360,34 @@ const renderScoreboards = () => {
   $('#championScoreboard').innerHTML = scoreboardMarkup([...teams].sort((a, b) => b.score - a.score), true);
 };
 
+const playQuestionAudio = (media, key) => {
+  if (!media?.audioUrl || media.mode !== 'audio' || lastQuestionMediaKey === key) return;
+  lastQuestionMediaKey = key;
+  questionAudio.src = media.audioUrl;
+  questionAudio.currentTime = 0;
+  questionAudio.play().catch(() => window.dispatchEvent(new CustomEvent('olympia-media-blocked')));
+};
+
 const renderObstacleGame = () => {
   const hasSelection = obstacleQuestionIndex !== null;
   $('#obstacleQuestionNumber').textContent = hasSelection ? String(obstacleQuestionIndex + 1).padStart(2, '0') : '--';
   $('#obstacleQuestionLabel').textContent = hasSelection ? (obstacleQuestionIndex < 6 ? `TỪ HÀNG NGANG ${obstacleQuestionIndex + 1}` : 'GỢI Ý TRUNG TÂM') : 'CHỌN CÂU HỎI';
-  $('#obstacleQuestion').textContent = hasSelection ? obstacleQuestions[obstacleQuestionIndex] : 'Admin nhấn một mảnh ghép từ 1–7 để chọn câu hỏi.';
+  const obstacleMedia = hasSelection ? mediaBank.obstacle[obstacleQuestionIndex] : null;
+  $('#obstacleQuestion').textContent = hasSelection ? (obstacleMedia?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : obstacleQuestions[obstacleQuestionIndex]) : 'Admin nhấn một mảnh ghép từ 1–7 để chọn câu hỏi.';
+  if (hasSelection) playQuestionAudio(obstacleMedia, `obstacle-${obstacleQuestionIndex}`);
   $('#obstacleTimer').textContent = '15';
   $('#obstacleTimerButton small').textContent = 'BẮT ĐẦU';
   $('#obstacleTimerButton').disabled = !hasSelection;
   $('#puzzleBoard').innerHTML = obstacleRevealed.map((revealed, index) => `<button type="button" aria-label="Chọn câu hỏi ${index + 1}" class="puzzle-piece${revealed ? ' revealed' : ''}${index === obstacleQuestionIndex ? ' current' : ''}" data-obstacle-piece="${index}" ${revealed ? 'disabled' : ''}>${revealed ? '' : index + 1}</button>`).join('');
-  $('#obstacleClueList').innerHTML = obstacleLetterCounts.map((count, index) => `
+  const answerLength = (value) => [...String(value || '').replace(/\s/g, '')].length;
+  $('#obstacleAnswerLength').textContent = `${answerLength(obstacleAnswers[6])} CHỮ CÁI`;
+  $('#obstacleClueList').innerHTML = obstacleAnswers.slice(0, 6).map((answer, index) => {
+    const count = answerLength(answer);
+    return `
     <div class="clue-row${obstacleRevealed[index] ? ' revealed' : ''}${index === obstacleQuestionIndex ? ' current' : ''}">
       <strong>${index + 1}</strong><div class="letter-dots">${Array.from({ length: count }, () => '<i class="letter-dot"></i>').join('')}</div><span>${count} chữ</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   $$('[data-obstacle-piece]').forEach((button) => button.addEventListener('click', () => {
     const index = Number(button.dataset.obstaclePiece);
     if (index === 6) {
@@ -386,13 +440,18 @@ const confirmObstacleResponses = () => {
   else goToSlide(14);
 };
 
-const speedDuration = () => (speedQuestionIndex < 4 ? 20 : 30);
+const speedDuration = () => (speedQuestionIndex < 12 ? 20 : 30);
 
 const renderSpeedGame = () => {
   const duration = speedDuration();
   $('#speedQuestionNumber').textContent = String(speedQuestionIndex + 1).padStart(2, '0');
   $('#speedQuestionTime').textContent = `${duration} GIÂY`;
-  $('#speedQuestion').textContent = speedQuestions[speedQuestionIndex];
+  const media = mediaBank.speed[speedQuestionIndex];
+  $('#speedQuestion').textContent = media?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : speedQuestions[speedQuestionIndex];
+  playQuestionAudio(media, `speed-${speedQuestionIndex}`);
+  const mediaBox = $('#speedMedia');
+  if (media?.visualUrl) mediaBox.innerHTML = media.visualType === 'video' ? `<video src="${media.visualUrl}" autoplay playsinline controls></video>` : `<img src="${media.visualUrl}" alt="Minh họa câu hỏi"/>`;
+  else mediaBox.innerHTML = '<strong>HÌNH ẢNH / VIDEO CÂU HỎI</strong><small>Chưa có tệp minh họa</small>';
   $('#speedTimer').textContent = String(duration);
   $('#speedTimerButton small').textContent = 'BẮT ĐẦU';
   $('#speedTeamScores').innerHTML = teams.map((team) => `<span><b>${team.name}</b><strong>${team.score}</strong></span>`).join('');
@@ -429,7 +488,7 @@ const confirmSpeedResponses = () => {
     .sort((a, b) => a.time - b.time);
   ranking.forEach(({ team }, rank) => { team.score += [40, 30, 20][rank] ?? 0; });
   speedWrongTeams = new Set();
-  if (speedQuestionIndex < 7) {
+  if (speedQuestionIndex < 23) {
     speedQuestionIndex += 1;
     goToSlide(20);
   } else goToSlide(22);
@@ -475,7 +534,25 @@ const renderFinishGame = (round) => {
   section.querySelector('.finish-game-team').textContent = teams[teamIndex].name;
   section.querySelector('.finish-score-strip').innerHTML = teams.map((team, index) => `<span class="${index === teamIndex ? 'active' : ''}"><b>${team.name}</b><strong>${team.score}</strong></span>`).join('');
   section.querySelector('.finish-question-label').textContent = `CÂU ${questionIndex + 1} / 4 · ${points} ĐIỂM`;
-  section.querySelector('.finish-question-text').textContent = finishQuestionText(teamIndex, questionIndex);
+  const finishMedia = mediaBank.finish[teamIndex][questionIndex];
+  section.querySelector('.finish-question-text').textContent = finishQuestionRevealed ? (finishMedia?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : finishQuestionText(teamIndex, questionIndex)) : 'CHỜ CHỌN NGÔI SAO HY VỌNG';
+  if (finishQuestionRevealed) playQuestionAudio(finishMedia, `finish-${teamIndex}-${questionIndex}`);
+  let starChoice = section.querySelector('.finish-star-choice');
+  if (!starChoice) {
+    starChoice = document.createElement('div');
+    starChoice.className = 'finish-star-choice';
+    starChoice.innerHTML = '<strong>SỬ DỤNG NGÔI SAO HY VỌNG?</strong><button type="button" data-star-choice="yes">CÓ</button><button type="button" data-star-choice="no">KHÔNG</button>';
+    section.querySelector('.finish-question-panel').append(starChoice);
+    starChoice.querySelectorAll('[data-star-choice]').forEach((button) => button.addEventListener('click', () => {
+      if (isPresentation) return;
+      finishStarActive = button.dataset.starChoice === 'yes';
+      if (finishStarActive) finishStarsUsed.add(teamIndex);
+      finishQuestionRevealed = true;
+      renderFinishGame(round);
+      signalStateChange();
+    }));
+  }
+  starChoice.hidden = starUsed || finishQuestionRevealed;
   const timerButton = section.querySelector('.finish-timer');
   timerButton.querySelector('span').textContent = duration;
   timerButton.querySelector('small').textContent = 'BẮT ĐẦU';
@@ -505,13 +582,14 @@ const renderFinishGame = (round) => {
       section.querySelector('.finish-correct').disabled = false;
       section.querySelector('.finish-wrong').disabled = false;
     }
-  } else timerButton.disabled = false;
+  } else timerButton.disabled = !finishQuestionRevealed;
   renderAdminAnswerKey();
 };
 
 const startFinishTimer = (round) => {
   const section = $(`[data-finish-game-round="${round}"]`);
   const teamIndex = finishTeamForRound(round);
+  if (!finishQuestionRevealed) return;
   const points = finishPacks[teamIndex][finishProgress[teamIndex]];
   if (finishStarActive) finishStarsUsed.add(teamIndex);
   countdown({
@@ -534,6 +612,7 @@ const advanceFinishQuestion = (round) => {
   finishSteal = { active: false, round: null, activeTeam: null, winner: null, points: 0 };
   finishCanJudge = false;
   finishStarActive = false;
+  finishQuestionRevealed = finishStarsUsed.has(teamIndex);
   finishProgress[teamIndex] += 1;
   clearCountdown();
   if (finishProgress[teamIndex] >= 4) goToSlide([28, 31, 34][round]);
@@ -562,9 +641,17 @@ const registerFinishBuzz = (teamIndex) => {
   if (!finishSteal.active || finishSteal.winner !== null || teamIndex === finishSteal.activeTeam) return false;
   finishSteal.winner = teamIndex;
   window.clearInterval(stealInterval);
-  stealInterval = null;
   finishCanJudge = true;
   renderFinishGame(finishSteal.round);
+  const round = finishSteal.round;
+  const display = $(`[data-finish-game-round="${round}"] .finish-steal-panel>strong`);
+  let seconds = 5;
+  display.textContent = seconds;
+  stealInterval = window.setInterval(() => {
+    seconds -= 1;
+    display.textContent = seconds;
+    if (seconds <= 0) advanceFinishQuestion(round);
+  }, 1000);
   return true;
 };
 
@@ -597,6 +684,7 @@ const confirmFinishPack = (round) => {
   const teamIndex = finishTeamForRound(round);
   finishProgress[teamIndex] = 0;
   finishStarActive = false;
+  finishQuestionRevealed = finishStarsUsed.has(teamIndex);
   finishCanJudge = false;
   finishSteal = { active: false, round: null, activeTeam: null, winner: null, points: 0 };
   goToSlide([27, 30, 33][round]);
@@ -604,7 +692,7 @@ const confirmFinishPack = (round) => {
 
 function goToSlide(number) {
   clearCountdown();
-  currentSlide = Math.min(34, Math.max(1, number));
+  currentSlide = Math.min(36, Math.max(1, number));
   stage.dataset.currentSlide = String(currentSlide);
   $$('.slide').forEach((slide) => slide.classList.toggle('active', Number(slide.dataset.slide) === currentSlide));
   slideNumber.textContent = String(currentSlide).padStart(2, '0');
@@ -646,6 +734,11 @@ function goToSlide(number) {
     finishVideo.currentTime = 0;
     finishVideo.play().then(() => $('.finish-video-slide').classList.remove('needs-play')).catch(() => $('.finish-video-slide').classList.add('needs-play'));
   }
+  [[35, kickoffOutroVideo], [36, obstacleOutroVideo]].forEach(([slide, element]) => {
+    if (currentSlide !== slide) { element.pause(); return; }
+    element.currentTime = 0;
+    element.play().catch(() => $(`[data-slide="${slide}"]`).classList.add('needs-play'));
+  });
   if (currentSlide === 6) renderPrivateRound();
   if ([7, 10, 16, 22, 28, 31, 34].includes(currentSlide)) renderScoreboards();
   if (currentSlide === 9) renderCommonRound();
@@ -660,6 +753,21 @@ function goToSlide(number) {
   renderAdminAnswerKey();
   if (!isPresentation) signalStateChange();
 }
+
+const nextLogicalSlide = () => {
+  if (currentSlide === 10 && roundVideos.kickoffOutroUrl) return 35;
+  if (currentSlide === 35) return 11;
+  if (currentSlide === 16 && roundVideos.obstacleOutroUrl) return 36;
+  if (currentSlide === 36) return 17;
+  return currentSlide + 1;
+};
+const previousLogicalSlide = () => {
+  if (currentSlide === 11 && roundVideos.kickoffOutroUrl) return 35;
+  if (currentSlide === 35) return 10;
+  if (currentSlide === 17 && roundVideos.obstacleOutroUrl) return 36;
+  if (currentSlide === 36) return 16;
+  return currentSlide - 1;
+};
 
 const playIntro = async (restart = false) => {
   goToSlide(1);
@@ -683,14 +791,13 @@ const readTimerValues = () => ({
 
 const getSynchronizedState = () => ({
   currentSlide,
+  resetToken: lastResetToken,
   scores: teams.map((team) => team.score),
-  questionBank,
-  answerBank,
   privateTeamIndex, privateQuestionIndex, commonQuestionIndex, commonSelectedTeam,
   obstacleQuestionIndex, obstacleRevealed, obstacleWrongTeams: [...obstacleWrongTeams],
   speedQuestionIndex, speedWrongTeams: [...speedWrongTeams],
   finishOrder, finishPacks, finishProgress, finishStarsUsed: [...finishStarsUsed],
-  finishStarActive, finishCanJudge, finishSteal,
+  finishStarActive, finishQuestionRevealed, finishCanJudge, finishSteal,
   questionStartedAt, timerActive,
   introPlayback,
   timers: readTimerValues(),
@@ -735,9 +842,43 @@ const applyQuestionContent = (remoteQuestions, remoteAnswers) => {
   copyNestedList(finishAnswers, remoteAnswers?.finish);
 };
 
+const copyMedia = (target, source) => {
+  if (!Array.isArray(source)) return;
+  source.forEach((item, index) => { if (target[index] && item && typeof item === 'object') Object.assign(target[index], item); });
+};
+const getContent = () => ({ questionBank, answerBank, mediaBank, roundVideos });
+const applyContent = (content) => {
+  if (!content) return;
+  applyQuestionContent(content.questionBank, content.answerBank);
+  copyMedia(mediaBank.common, content.mediaBank?.common);
+  copyMedia(mediaBank.obstacle, content.mediaBank?.obstacle);
+  copyMedia(mediaBank.speed, content.mediaBank?.speed);
+  content.mediaBank?.private?.forEach((list, index) => copyMedia(mediaBank.private[index], list));
+  content.mediaBank?.finish?.forEach((list, index) => copyMedia(mediaBank.finish[index], list));
+  Object.assign(roundVideos, content.roundVideos || {});
+  if (roundVideos.kickoffOutroUrl) kickoffOutroVideo.src = roundVideos.kickoffOutroUrl;
+  if (roundVideos.obstacleOutroUrl) obstacleOutroVideo.src = roundVideos.obstacleOutroUrl;
+  renderCurrentSynchronizedSlide();
+};
+
+const resetLocalGame = () => {
+  teams.forEach((team) => { team.score = 0; });
+  privateTeamIndex = 0; privateQuestionIndex = 0; commonQuestionIndex = 0; commonSelectedTeam = null;
+  obstacleQuestionIndex = null; obstacleRevealed = Array(7).fill(false); obstacleWrongTeams.clear();
+  speedQuestionIndex = 0; speedWrongTeams.clear();
+  speedResponseTimes.forEach((times) => times.fill(null));
+  finishOrder = []; finishProgress.fill(0); finishStarsUsed.clear(); finishStarActive = false; finishQuestionRevealed = false; finishCanJudge = false;
+  finishPacks.forEach((pack) => pack.fill(20));
+  finishSteal = { active: false, round: null, activeTeam: null, winner: null, points: 0 };
+  goToSlide(1);
+};
+
 const applySynchronizedState = (state) => {
   if (!state) return;
-  applyQuestionContent(state.questionBank, state.answerBank);
+  if (state.resetToken && state.resetToken !== lastResetToken) {
+    lastResetToken = state.resetToken;
+    resetLocalGame();
+  }
   state.scores?.forEach((score, index) => { if (teams[index]) teams[index].score = Number(score) || 0; });
   privateTeamIndex = state.privateTeamIndex ?? privateTeamIndex;
   privateQuestionIndex = state.privateQuestionIndex ?? privateQuestionIndex;
@@ -754,6 +895,7 @@ const applySynchronizedState = (state) => {
   finishStarsUsed.clear();
   (state.finishStarsUsed ?? []).forEach((value) => finishStarsUsed.add(value));
   finishStarActive = Boolean(state.finishStarActive);
+  finishQuestionRevealed = Boolean(state.finishQuestionRevealed);
   finishCanJudge = Boolean(state.finishCanJudge);
   finishSteal = state.finishSteal ?? finishSteal;
   questionStartedAt = state.questionStartedAt ?? questionStartedAt;
@@ -805,7 +947,7 @@ const applyIntroPlayback = async (remote, force = false) => {
 const activatePresentationMedia = async () => {
   if (!isPresentation) return true;
   if (currentSlide === 1 && introPlayback.playing) return applyIntroPlayback(introPlayback, true);
-  const activeVideo = ({ 3: kickoffVideo, 11: obstacleVideo, 17: speedVideo, 23: finishVideo })[currentSlide];
+  const activeVideo = ({ 3: kickoffVideo, 11: obstacleVideo, 17: speedVideo, 23: finishVideo, 35: kickoffOutroVideo, 36: obstacleOutroVideo })[currentSlide];
   if (!activeVideo) return true;
   try {
     await activeVideo.play();
@@ -823,7 +965,7 @@ const setRealtimeAnswers = (rows) => {
   if (currentSlide === 21) renderSpeedResponses();
 };
 
-window.OlympiaStage = { getState: getSynchronizedState, applyState: applySynchronizedState, setRealtimeAnswers, registerFinishBuzz, goToSlide, activatePresentationMedia };
+window.OlympiaStage = { getState: getSynchronizedState, applyState: applySynchronizedState, getContent, applyContent, resetLocalGame, setRealtimeAnswers, registerFinishBuzz, goToSlide, activatePresentationMedia };
 
 $('#startButton').addEventListener('click', () => playIntro(true));
 playPauseButton.addEventListener('click', togglePlayback);
@@ -841,14 +983,33 @@ $('#closeQuestionEditor').addEventListener('click', closeQuestionEditor);
 $('#editorRound').addEventListener('change', refreshEditorQuestions);
 $('#editorTeam').addEventListener('change', loadEditorContent);
 $('#editorQuestion').addEventListener('change', loadEditorContent);
+$('#editorQuestionMode').addEventListener('change', () => { $('#editorAudioWrap').hidden = $('#editorQuestionMode').value !== 'audio'; });
 $('#saveQuestionContent').addEventListener('click', saveQuestionContent);
 $('#questionEditor').addEventListener('click', (event) => { if (event.target === $('#questionEditor')) closeQuestionEditor(); });
 $('#kickoffPlay').addEventListener('click', () => kickoffVideo.play().then(() => $('.kickoff-intro').classList.remove('needs-play')));
 $('#obstaclePlay').addEventListener('click', () => obstacleVideo.play().then(() => $('[data-slide="11"]').classList.remove('needs-play')));
 $('#speedPlay').addEventListener('click', () => speedVideo.play().then(() => $('.speed-video-slide').classList.remove('needs-play')));
 $('#finishPlay').addEventListener('click', () => finishVideo.play().then(() => $('.finish-video-slide').classList.remove('needs-play')));
-previousSlide.addEventListener('click', () => goToSlide(currentSlide - 1));
-nextSlide.addEventListener('click', () => goToSlide(currentSlide + 1));
+$('#kickoffOutroPlay').addEventListener('click', () => kickoffOutroVideo.play());
+$('#obstacleOutroPlay').addEventListener('click', () => obstacleOutroVideo.play());
+previousSlide.addEventListener('click', () => goToSlide(previousLogicalSlide()));
+nextSlide.addEventListener('click', () => goToSlide(nextLogicalSlide()));
+
+$('#scoreEditorButton').addEventListener('click', () => {
+  teams.forEach((team, index) => { $(`#scoreInput${index + 1}`).value = team.score; });
+  $('#scoreEditor').hidden = false;
+});
+$('#closeScoreEditor').addEventListener('click', () => { $('#scoreEditor').hidden = true; });
+$('#saveScores').addEventListener('click', () => {
+  teams.forEach((team, index) => { team.score = Number($(`#scoreInput${index + 1}`).value) || 0; });
+  renderCurrentSynchronizedSlide(); renderScoreboards(); signalStateChange(); $('#scoreEditor').hidden = true;
+});
+$('#resetGameButton').addEventListener('click', async () => {
+  if (!window.confirm('Reset toàn bộ tiến trình và điểm? Câu hỏi đã lưu sẽ được giữ nguyên.')) return;
+  try { const result = await window.OlympiaSync.resetGame(); applySynchronizedState(result.state); } catch (error) { window.alert(`Không thể reset: ${error.message}`); }
+});
+kickoffOutroVideo.addEventListener('ended', () => { if (!isPresentation) goToSlide(11); });
+obstacleOutroVideo.addEventListener('ended', () => { if (!isPresentation) goToSlide(17); });
 
 $('#privateTimerButton').addEventListener('click', startPrivateTimer);
 $('#privateCorrect').addEventListener('click', () => judgePrivate(true));
@@ -915,8 +1076,8 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (event.code === 'Space' && currentSlide === 1) { event.preventDefault(); togglePlayback(); }
-  if (event.key === 'ArrowLeft') goToSlide(currentSlide - 1);
-  if (event.key === 'ArrowRight') goToSlide(currentSlide + 1);
+  if (event.key === 'ArrowLeft') goToSlide(previousLogicalSlide());
+  if (event.key === 'ArrowRight') goToSlide(nextLogicalSlide());
   if (event.key.toLowerCase() === 'r' && currentSlide === 1) playIntro(true);
   if (event.key.toLowerCase() === 'f') $('#fullscreenButton').click();
 });
