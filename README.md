@@ -81,12 +81,14 @@ Vercel tự nhận các file trong thư mục `api` là Node.js Functions và c�
 ## 5. Cách vận hành
 
 1. Máy điều khiển mở `/admin`, nhập `ADMIN_PASSWORD`.
+   Dùng nút biểu tượng bút ở thanh điều khiển để mở **Câu hỏi & đáp án**. Chọn phần thi, nhóm và số câu, sau đó bấm **Lưu & đồng bộ**. Nội dung được lưu trong trạng thái chương trình và cập nhật sang màn hình trình chiếu.
 2. Máy chiếu mở `/trinh-chieu` và bật toàn màn hình.
    Nhấn **Bật trình chiếu** một lần trước khi bắt đầu để trình duyệt cho phép phát video và âm thanh. Realtime là kênh đồng bộ chính; hệ thống còn kiểm tra dự phòng mỗi 700 ms nếu kết nối WebSocket bị gián đoạn.
 3. Ba máy đội thi mở `/nhom/1`, `/nhom/2`, `/nhom/3`, nhập PIN tương ứng.
    PIN được kiểm tra ngay khi bấm **Vào phòng**. Nếu trang báo chưa cấu hình PIN, hãy kiểm tra ba biến `TEAM_1_PIN`, `TEAM_2_PIN`, `TEAM_3_PIN` trên Vercel và Redeploy.
 4. Khi admin chọn câu Vượt Chướng Ngại Vật hoặc bắt đầu câu Tăng Tốc, trang đội thi tự hiện ô nhập đáp án.
 5. Đáp án và thời gian gửi hiện realtime trên trang admin/trình chiếu khi chuyển sang màn hình đáp án.
+   Nhóm chưa gửi đáp án sẽ để trống; hệ thống không còn hiển thị nội dung mẫu trong ô kết quả.
 6. Ở Về Đích, nếu nhóm chính trả lời sai, hai nhóm còn lại thấy nút **BẤM CHUÔNG** trong 5 giây. Database chỉ chấp nhận lượt bấm đầu tiên.
 
 ## 6. Dữ liệu và bảo mật

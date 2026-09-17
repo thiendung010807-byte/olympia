@@ -40,10 +40,15 @@ const speedQuestions = Array.from(
   { length: 8 },
   (_, index) => `Nội dung câu hỏi Tăng Tốc số ${index + 1}`,
 );
-const speedResponseTimes = [
-  [2.84, 3.56, 4.31], [4.12, 2.91, 5.08], [6.42, 5.77, 4.95], [3.63, 3.14, 4.27],
-  [12.48, 15.06, 10.73], [18.25, 16.41, 20.08], [9.82, 11.34, 8.95], [21.62, 19.74, 23.08],
-];
+const finishQuestions = teams.map((team) => Array.from({ length: 4 }, (_, index) => `Nội dung câu hỏi Về Đích số ${index + 1} dành cho ${team.name}`));
+const privateAnswers = teams.map(() => Array(15).fill(''));
+const commonAnswers = Array(15).fill('');
+const obstacleAnswers = Array(7).fill('');
+const speedAnswers = Array(8).fill('');
+const finishAnswers = teams.map(() => Array(4).fill(''));
+const speedResponseTimes = Array.from({ length: 8 }, () => Array(3).fill(null));
+const questionBank = { private: privateQuestions, common: commonQuestions, obstacle: obstacleQuestions, speed: speedQuestions, finish: finishQuestions };
+const answerBank = { private: privateAnswers, common: commonAnswers, obstacle: obstacleAnswers, speed: speedAnswers, finish: finishAnswers };
 
 const slideContexts = [
   'INTRO · 00:31', 'GIỚI THIỆU NHÓM', 'INTRO KHỞI ĐỘNG', 'KHỞI ĐỘNG', 'LUẬT CHƠI',
@@ -96,6 +101,74 @@ const setState = (state, label) => {
   const playing = state === 'playing';
   playPauseButton.classList.toggle('is-paused', playing);
   playLabel.textContent = playing ? 'Tạm dừng' : 'Phát';
+};
+
+const currentAnswer = () => {
+  if (currentSlide === 6) return privateAnswers[privateTeamIndex]?.[privateQuestionIndex] ?? '';
+  if (currentSlide === 9) return commonAnswers[commonQuestionIndex] ?? '';
+  if ([14, 15].includes(currentSlide) && obstacleQuestionIndex !== null) return obstacleAnswers[obstacleQuestionIndex] ?? '';
+  if ([20, 21].includes(currentSlide)) return speedAnswers[speedQuestionIndex] ?? '';
+  const round = { 27: 0, 30: 1, 33: 2 }[currentSlide];
+  if (round !== undefined) {
+    const teamIndex = finishTeamForRound(round);
+    return finishAnswers[teamIndex]?.[Math.min(finishProgress[teamIndex], 3)] ?? '';
+  }
+  return null;
+};
+
+const renderAdminAnswerKey = () => {
+  const panel = $('#adminAnswerKey');
+  const answer = currentAnswer();
+  panel.hidden = answer === null;
+  if (answer !== null) panel.querySelector('strong').textContent = answer.trim() || 'Chưa nhập đáp án';
+};
+
+const editorRoundMeta = {
+  private: { count: 15, teams: true }, common: { count: 15, teams: false }, obstacle: { count: 7, teams: false },
+  speed: { count: 8, teams: false }, finish: { count: 4, teams: true },
+};
+
+const editorLocation = () => {
+  const round = $('#editorRound').value;
+  const team = Number($('#editorTeam').value) || 0;
+  const question = Number($('#editorQuestion').value) || 0;
+  return { round, team, question, meta: editorRoundMeta[round] };
+};
+
+const loadEditorContent = () => {
+  const { round, team, question, meta } = editorLocation();
+  $('#editorTeamWrap').hidden = !meta.teams;
+  const questions = meta.teams ? questionBank[round][team] : questionBank[round];
+  const answers = meta.teams ? answerBank[round][team] : answerBank[round];
+  $('#editorQuestionText').value = questions[question] ?? '';
+  $('#editorAnswerText').value = answers[question] ?? '';
+  $('#editorSaveStatus').textContent = '';
+};
+
+const refreshEditorQuestions = () => {
+  const round = $('#editorRound').value;
+  const meta = editorRoundMeta[round];
+  $('#editorQuestion').innerHTML = Array.from({ length: meta.count }, (_, index) => `<option value="${index}">Câu ${index + 1}${round === 'obstacle' && index === 6 ? ' · Gợi ý trung tâm' : ''}</option>`).join('');
+  loadEditorContent();
+};
+
+const openQuestionEditor = () => {
+  $('#questionEditor').hidden = false;
+  refreshEditorQuestions();
+};
+
+const closeQuestionEditor = () => { $('#questionEditor').hidden = true; };
+
+const saveQuestionContent = () => {
+  const { round, team, question, meta } = editorLocation();
+  const questions = meta.teams ? questionBank[round][team] : questionBank[round];
+  const answers = meta.teams ? answerBank[round][team] : answerBank[round];
+  questions[question] = $('#editorQuestionText').value.trim();
+  answers[question] = $('#editorAnswerText').value.trim();
+  renderCurrentSynchronizedSlide();
+  renderAdminAnswerKey();
+  signalStateChange();
+  $('#editorSaveStatus').textContent = 'Đã lưu và gửi đồng bộ';
 };
 
 const clearCountdown = () => {
@@ -152,6 +225,7 @@ const renderPrivateRound = () => {
   $('#privateCorrect').disabled = true;
   $('#privateWrong').disabled = true;
   renderTeamStrips();
+  renderAdminAnswerKey();
 };
 
 const startPrivateTimer = () => countdown({
@@ -195,6 +269,7 @@ const renderCommonRound = () => {
   $('#commonCorrect').disabled = true;
   $('#commonWrong').disabled = true;
   renderTeamStrips();
+  renderAdminAnswerKey();
 };
 
 const selectCommonTeam = (index) => {
@@ -271,6 +346,7 @@ const renderObstacleGame = () => {
     obstacleQuestionIndex = index;
     renderObstacleGame();
   }));
+  renderAdminAnswerKey();
 };
 
 const startObstacleTimer = () => {
@@ -288,7 +364,7 @@ const renderObstacleResponses = () => {
   $('#confirmObstacleResponses').disabled = obstacleQuestionIndex === null;
   $('#obstacleResponseCards').innerHTML = teams.map((team, index) => `
     <button class="response-card${obstacleWrongTeams.has(index) ? ' wrong' : ''}" type="button" data-response-team="${index}">
-      <strong>${team.name}</strong><p>Câu trả lời sẽ được đồng bộ ở bước sau</p><span class="answer-orb"></span>
+      <strong>${team.name}</strong><p></p><span class="answer-orb"></span>
     </button>`).join('');
   $$('[data-response-team]').forEach((button) => button.addEventListener('click', () => {
     const index = Number(button.dataset.responseTeam);
@@ -296,6 +372,8 @@ const renderObstacleResponses = () => {
     else obstacleWrongTeams.add(index);
     renderObstacleResponses();
   }));
+  renderAdminAnswerKey();
+  window.queueMicrotask(() => window.dispatchEvent(new CustomEvent('olympia-responses-rendered')));
 };
 
 const confirmObstacleResponses = () => {
@@ -318,6 +396,7 @@ const renderSpeedGame = () => {
   $('#speedTimer').textContent = String(duration);
   $('#speedTimerButton small').textContent = 'BẮT ĐẦU';
   $('#speedTeamScores').innerHTML = teams.map((team) => `<span><b>${team.name}</b><strong>${team.score}</strong></span>`).join('');
+  renderAdminAnswerKey();
 };
 
 const startSpeedTimer = () => countdown({
@@ -331,7 +410,7 @@ const renderSpeedResponses = () => {
   $('#speedResponseQuestionNumber').textContent = String(speedQuestionIndex + 1).padStart(2, '0');
   $('#speedResponseCards').innerHTML = teams.map((team, index) => `
     <button class="response-card speed-response-card${speedWrongTeams.has(index) ? ' wrong' : ''}" type="button" data-speed-response-team="${index}">
-      <strong>${team.name}</strong><p>Câu trả lời sẽ được đồng bộ ở bước sau</p><time>${speedResponseTimes[speedQuestionIndex][index].toFixed(2)} giây</time>
+      <strong>${team.name}</strong><p></p><time>${Number.isFinite(speedResponseTimes[speedQuestionIndex][index]) ? `${speedResponseTimes[speedQuestionIndex][index].toFixed(2)} giây` : ''}</time>
     </button>`).join('');
   $$('[data-speed-response-team]').forEach((button) => button.addEventListener('click', () => {
     const index = Number(button.dataset.speedResponseTeam);
@@ -339,12 +418,14 @@ const renderSpeedResponses = () => {
     else speedWrongTeams.add(index);
     renderSpeedResponses();
   }));
+  renderAdminAnswerKey();
+  window.queueMicrotask(() => window.dispatchEvent(new CustomEvent('olympia-responses-rendered')));
 };
 
 const confirmSpeedResponses = () => {
   const ranking = teams
     .map((team, index) => ({ team, index, time: speedResponseTimes[speedQuestionIndex][index] }))
-    .filter(({ index }) => !speedWrongTeams.has(index))
+    .filter(({ index, time }) => !speedWrongTeams.has(index) && Number.isFinite(time))
     .sort((a, b) => a.time - b.time);
   ranking.forEach(({ team }, rank) => { team.score += [40, 30, 20][rank] ?? 0; });
   speedWrongTeams = new Set();
@@ -382,8 +463,7 @@ const renderFinishSelection = (round) => {
   }));
 };
 
-const finishQuestionText = (teamIndex, questionIndex, points) =>
-  `Nội dung câu hỏi Về Đích số ${questionIndex + 1} (${points} điểm) dành cho ${teams[teamIndex].name}`;
+const finishQuestionText = (teamIndex, questionIndex) => finishQuestions[teamIndex]?.[questionIndex] ?? '';
 
 const renderFinishGame = (round) => {
   const section = $(`[data-finish-game-round="${round}"]`);
@@ -395,7 +475,7 @@ const renderFinishGame = (round) => {
   section.querySelector('.finish-game-team').textContent = teams[teamIndex].name;
   section.querySelector('.finish-score-strip').innerHTML = teams.map((team, index) => `<span class="${index === teamIndex ? 'active' : ''}"><b>${team.name}</b><strong>${team.score}</strong></span>`).join('');
   section.querySelector('.finish-question-label').textContent = `CÂU ${questionIndex + 1} / 4 · ${points} ĐIỂM`;
-  section.querySelector('.finish-question-text').textContent = finishQuestionText(teamIndex, questionIndex, points);
+  section.querySelector('.finish-question-text').textContent = finishQuestionText(teamIndex, questionIndex);
   const timerButton = section.querySelector('.finish-timer');
   timerButton.querySelector('span').textContent = duration;
   timerButton.querySelector('small').textContent = 'BẮT ĐẦU';
@@ -426,6 +506,7 @@ const renderFinishGame = (round) => {
       section.querySelector('.finish-wrong').disabled = false;
     }
   } else timerButton.disabled = false;
+  renderAdminAnswerKey();
 };
 
 const startFinishTimer = (round) => {
@@ -576,6 +657,7 @@ function goToSlide(number) {
   if (selectionRound !== undefined) renderFinishSelection(selectionRound);
   const gameRound = { 27: 0, 30: 1, 33: 2 }[currentSlide];
   if (gameRound !== undefined) renderFinishGame(gameRound);
+  renderAdminAnswerKey();
   if (!isPresentation) signalStateChange();
 }
 
@@ -602,6 +684,8 @@ const readTimerValues = () => ({
 const getSynchronizedState = () => ({
   currentSlide,
   scores: teams.map((team) => team.score),
+  questionBank,
+  answerBank,
   privateTeamIndex, privateQuestionIndex, commonQuestionIndex, commonSelectedTeam,
   obstacleQuestionIndex, obstacleRevealed, obstacleWrongTeams: [...obstacleWrongTeams],
   speedQuestionIndex, speedWrongTeams: [...speedWrongTeams],
@@ -625,10 +709,35 @@ const renderCurrentSynchronizedSlide = () => {
   if (selectionRound !== undefined) renderFinishSelection(selectionRound);
   const gameRound = { 27: 0, 30: 1, 33: 2 }[currentSlide];
   if (gameRound !== undefined) renderFinishGame(gameRound);
+  renderAdminAnswerKey();
+};
+
+const copyList = (target, source) => {
+  if (!Array.isArray(source)) return;
+  source.forEach((value, index) => { if (index < target.length && typeof value === 'string') target[index] = value; });
+};
+
+const copyNestedList = (target, source) => {
+  if (!Array.isArray(source)) return;
+  source.forEach((list, index) => { if (target[index]) copyList(target[index], list); });
+};
+
+const applyQuestionContent = (remoteQuestions, remoteAnswers) => {
+  copyNestedList(privateQuestions, remoteQuestions?.private);
+  copyList(commonQuestions, remoteQuestions?.common);
+  copyList(obstacleQuestions, remoteQuestions?.obstacle);
+  copyList(speedQuestions, remoteQuestions?.speed);
+  copyNestedList(finishQuestions, remoteQuestions?.finish);
+  copyNestedList(privateAnswers, remoteAnswers?.private);
+  copyList(commonAnswers, remoteAnswers?.common);
+  copyList(obstacleAnswers, remoteAnswers?.obstacle);
+  copyList(speedAnswers, remoteAnswers?.speed);
+  copyNestedList(finishAnswers, remoteAnswers?.finish);
 };
 
 const applySynchronizedState = (state) => {
   if (!state) return;
+  applyQuestionContent(state.questionBank, state.answerBank);
   state.scores?.forEach((score, index) => { if (teams[index]) teams[index].score = Number(score) || 0; });
   privateTeamIndex = state.privateTeamIndex ?? privateTeamIndex;
   privateQuestionIndex = state.privateQuestionIndex ?? privateQuestionIndex;
@@ -727,6 +836,13 @@ $('#fullscreenButton').addEventListener('click', async () => {
   if (!document.fullscreenElement) await stage.requestFullscreen?.();
   else await document.exitFullscreen?.();
 });
+$('#contentEditorButton').addEventListener('click', openQuestionEditor);
+$('#closeQuestionEditor').addEventListener('click', closeQuestionEditor);
+$('#editorRound').addEventListener('change', refreshEditorQuestions);
+$('#editorTeam').addEventListener('change', loadEditorContent);
+$('#editorQuestion').addEventListener('change', loadEditorContent);
+$('#saveQuestionContent').addEventListener('click', saveQuestionContent);
+$('#questionEditor').addEventListener('click', (event) => { if (event.target === $('#questionEditor')) closeQuestionEditor(); });
 $('#kickoffPlay').addEventListener('click', () => kickoffVideo.play().then(() => $('.kickoff-intro').classList.remove('needs-play')));
 $('#obstaclePlay').addEventListener('click', () => obstacleVideo.play().then(() => $('[data-slide="11"]').classList.remove('needs-play')));
 $('#speedPlay').addEventListener('click', () => speedVideo.play().then(() => $('.speed-video-slide').classList.remove('needs-play')));

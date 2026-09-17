@@ -55,19 +55,20 @@ const hydrateAnswers = () => {
   if (state.currentSlide === 15 && state.obstacleQuestionIndex !== null) {
     document.querySelectorAll('[data-response-team]').forEach((card) => {
       const row = latestAnswers.find((item) => item.round === 'obstacle' && item.question_index === state.obstacleQuestionIndex && item.team_id === Number(card.dataset.responseTeam) + 1);
-      if (row) card.querySelector('p').textContent = row.answer;
+      card.querySelector('p').textContent = row?.answer || '';
     });
   }
   if (state.currentSlide === 21) {
     document.querySelectorAll('[data-speed-response-team]').forEach((card) => {
       const row = latestAnswers.find((item) => item.round === 'speed' && item.question_index === state.speedQuestionIndex && item.team_id === Number(card.dataset.speedResponseTeam) + 1);
-      if (!row) return;
-      card.querySelector('p').textContent = row.answer;
+      card.querySelector('p').textContent = row?.answer || '';
       const time = card.querySelector('time');
-      if (time && row.response_ms !== null) time.textContent = `${(row.response_ms / 1000).toFixed(2)} giây`;
+      if (time) time.textContent = row?.response_ms !== null && row?.response_ms !== undefined ? `${(row.response_ms / 1000).toFixed(2)} giây` : '';
     });
   }
 };
+
+window.addEventListener('olympia-responses-rendered', hydrateAnswers);
 
 const loadAnswers = async () => {
   const { data } = await supabase.from('team_answers').select('*').eq('game_id', config.gameId).order('submitted_at');

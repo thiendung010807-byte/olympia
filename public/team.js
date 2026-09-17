@@ -16,6 +16,7 @@ const config = await fetch('/api/config', { cache: 'no-store' }).then((response)
 const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
 let currentState = null;
 let submittedKey = '';
+let activeQuestionKey = '';
 let lastStateUpdatedAt = null;
 let statePollBusy = false;
 
@@ -51,13 +52,15 @@ const render = (state) => {
     $('#roundLabel').textContent = obstacleReady ? 'VƯỢT CHƯỚNG NGẠI VẬT' : 'TĂNG TỐC';
     $('#questionLabel').textContent = `CÂU ${Number(index) + 1}`;
     const key = `${round}-${index}`;
-    if (submittedKey !== key) {
+    if (activeQuestionKey !== key) {
       $('#answerInput').value = '';
       $('#answerStatus').textContent = '';
       submittedKey = '';
+      activeQuestionKey = key;
     }
     return;
   }
+  activeQuestionKey = '';
   show('#waitPanel');
 };
 
