@@ -99,3 +99,19 @@
 .present-mode .control-dock,.present-mode .judge-button,.present-mode .skip-button,.present-mode .confirm-responses,.present-mode .finish-confirm,.present-mode .finish-star,.present-mode .finish-buzz-teams,.present-mode .video-start-overlay{display:none!important}.present-mode .puzzle-piece,.present-mode .team-pill,.present-mode .finish-point-card,.present-mode .response-card{pointer-events:none}.present-mode .timer-button{pointer-events:none}.present-mode .timer-button small{display:none}.present-mode .status-bar{opacity:.7}.connection-badge{position:fixed;z-index:80;right:1rem;bottom:1rem;padding:.45rem .7rem;border:1px solid rgba(173,232,255,.4);border-radius:2rem;background:rgba(1,25,78,.78);color:#ccecff;font-size:.7rem;font-weight:700}.connection-badge.online{color:#72f0bc}.connection-badge.offline{color:#ff9aa8}
 
 @media(max-width:760px){.speed-stage{height:57vh;padding:.6rem}.speed-question{min-height:5.2rem;padding:.65rem}.speed-question p{font-size:.8rem}.finish-question-panel{height:35vh;padding:1rem 1.25rem}.finish-question-text{max-width:96%;font-size:.92rem}.finish-steal-panel{bottom:4.65rem;width:94%;gap:.4rem}.finish-steal-panel>span{min-width:0}.finish-buzz-teams button{padding:0 .35rem;font-size:.58rem}}
+
+/* Mảnh ghép VCNV hoàn toàn đặc khi chưa mở. */
+.puzzle-piece{
+  border-color:#1676c4;
+  background:linear-gradient(145deg,#041e55,#073988);
+  opacity:1;
+}
+
+/* Khi admin mở mảnh, lớp che biến mất để hiện ảnh phía dưới. */
+.puzzle-piece.revealed{
+  border-color:transparent;
+  background:transparent;
+  opacity:0;
+  filter:none;
+  transform:scale(1);
+}
