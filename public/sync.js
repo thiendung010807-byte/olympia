@@ -6,6 +6,19 @@ const mode = params.get('mode') === 'present' || presentationPath ? 'present' : 
 document.body.classList.add(`${mode}-mode`);
 document.body.dataset.mode = mode;
 
+let presentationActivator = null;
+if (mode === 'present') {
+  presentationActivator = document.createElement('div');
+  presentationActivator.className = 'presentation-activator';
+  presentationActivator.innerHTML = '<div><button type="button">BẬT TRÌNH CHIẾU</button><p>Nhấn một lần để trình duyệt cho phép phát video và âm thanh đồng bộ</p></div>';
+  document.body.append(presentationActivator);
+  presentationActivator.querySelector('button').addEventListener('click', async () => {
+    const ok = await window.OlympiaStage.activatePresentationMedia();
+    if (ok) presentationActivator.hidden = true;
+  });
+  window.addEventListener('olympia-media-blocked', () => { presentationActivator.hidden = false; });
+}
+
 const badge = document.createElement('div');
 badge.className = 'connection-badge';
 badge.textContent = 'Đang kết nối…';
@@ -33,6 +46,8 @@ if (mode === 'admin' && !adminPassword) {
 let applyingRemote = false;
 let publishTimer = null;
 let latestAnswers = [];
+let lastRemoteUpdatedAt = null;
+let pollBusy = false;
 
 const hydrateAnswers = () => {
   const state = window.OlympiaStage?.getState();
@@ -82,11 +97,26 @@ const schedulePublish = () => {
   publishTimer = window.setTimeout(publishState, 180);
 };
 
+window.addEventListener('olympia-state-change', schedulePublish);
+
+const applyRemoteState = (state, updatedAt = null) => {
+  if (mode !== 'present' || !state) return;
+  if (updatedAt && updatedAt === lastRemoteUpdatedAt) return;
+  lastRemoteUpdatedAt = updatedAt || state.updatedAt || lastRemoteUpdatedAt;
+  applyingRemote = true;
+  window.OlympiaStage.applyState(state);
+  applyingRemote = false;
+  window.setTimeout(hydrateAnswers, 0);
+};
+
 const initial = await fetch('/api/state', { cache: 'no-store' }).then((response) => response.json());
 if (initial.state) {
-  applyingRemote = true;
-  window.OlympiaStage.applyState(initial.state);
-  applyingRemote = false;
+  if (mode === 'present') applyRemoteState(initial.state, initial.updatedAt);
+  else {
+    applyingRemote = true;
+    window.OlympiaStage.applyState(initial.state);
+    applyingRemote = false;
+  }
 }
 
 if (mode === 'admin') {
@@ -103,12 +133,7 @@ await loadAnswers();
 
 supabase.channel(`olympia-${config.gameId}`)
   .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'game_state', filter: `id=eq.${config.gameId}` }, ({ new: row }) => {
-    if (mode === 'present') {
-      applyingRemote = true;
-      window.OlympiaStage.applyState(row.state);
-      applyingRemote = false;
-      window.setTimeout(hydrateAnswers, 0);
-    }
+    if (mode === 'present') applyRemoteState(row.state, row.updated_at);
     if ([15, 21].includes(Number(row.state?.currentSlide))) window.setTimeout(loadAnswers, 40);
   })
   .on('postgres_changes', { event: '*', schema: 'public', table: 'team_answers', filter: `game_id=eq.${config.gameId}` }, loadAnswers)
@@ -116,5 +141,18 @@ supabase.channel(`olympia-${config.gameId}`)
     if (mode === 'admin' && window.OlympiaStage.registerFinishBuzz(row.team_id - 1)) schedulePublish();
   })
   .subscribe((status) => setConnection(status === 'SUBSCRIBED', status === 'SUBSCRIBED' ? 'Realtime đã kết nối' : 'Đang kết nối…'));
+
+if (mode === 'present') window.setInterval(async () => {
+  if (pollBusy) return;
+  pollBusy = true;
+  try {
+    const payload = await fetch('/api/state', { cache: 'no-store' }).then((response) => response.json());
+    applyRemoteState(payload.state, payload.updatedAt);
+  } catch {
+    setConnection(false, 'Đang kết nối lại…');
+  } finally {
+    pollBusy = false;
+  }
+}, 700);
 
 if (mode === 'admin') schedulePublish();

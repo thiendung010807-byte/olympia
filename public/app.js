@@ -80,6 +80,10 @@ let stealInterval = null;
 let questionStartedAt = null;
 let timerActive = false;
 let timerInterval = null;
+let introPlayback = { playing: false, startedAt: null, position: 0, revision: 0 };
+let lastAppliedIntroRevision = -1;
+
+const signalStateChange = () => window.dispatchEvent(new CustomEvent('olympia-state-change'));
 
 const formatTime = (value) => {
   const safe = Number.isFinite(value) ? Math.max(0, value) : 0;
@@ -572,6 +576,7 @@ function goToSlide(number) {
   if (selectionRound !== undefined) renderFinishSelection(selectionRound);
   const gameRound = { 27: 0, 30: 1, 33: 2 }[currentSlide];
   if (gameRound !== undefined) renderFinishGame(gameRound);
+  if (!isPresentation) signalStateChange();
 }
 
 const playIntro = async (restart = false) => {
@@ -603,6 +608,7 @@ const getSynchronizedState = () => ({
   finishOrder, finishPacks, finishProgress, finishStarsUsed: [...finishStarsUsed],
   finishStarActive, finishCanJudge, finishSteal,
   questionStartedAt, timerActive,
+  introPlayback,
   timers: readTimerValues(),
   updatedAt: new Date().toISOString(),
 });
@@ -656,6 +662,48 @@ const applySynchronizedState = (state) => {
       section.querySelector('.finish-steal-panel>strong').textContent = state.timers.steal?.[index] ?? section.querySelector('.finish-steal-panel>strong').textContent;
     });
   }
+  if (state.introPlayback) void applyIntroPlayback(state.introPlayback);
+};
+
+const applyIntroPlayback = async (remote, force = false) => {
+  if (!remote) return true;
+  const revision = Number(remote.revision) || 0;
+  introPlayback = { ...introPlayback, ...remote, revision };
+  if (!isPresentation || currentSlide !== 1) return true;
+  if (!force && revision === lastAppliedIntroRevision) return !video.paused;
+  lastAppliedIntroRevision = revision;
+  const started = Date.parse(remote.startedAt || '');
+  const elapsed = remote.playing && Number.isFinite(started) ? Math.max(0, (Date.now() - started) / 1000) : 0;
+  const expected = Math.max(0, Number(remote.position) || 0) + elapsed;
+  if (Number.isFinite(video.duration) && video.duration > 0) {
+    video.currentTime = Math.min(expected, Math.max(0, video.duration - .05));
+  } else if (expected > 0) {
+    video.addEventListener('loadedmetadata', () => { video.currentTime = Math.min(expected, Math.max(0, video.duration - .05)); }, { once: true });
+  }
+  if (!remote.playing) {
+    video.pause();
+    return true;
+  }
+  try {
+    await video.play();
+    return true;
+  } catch {
+    window.dispatchEvent(new CustomEvent('olympia-media-blocked'));
+    return false;
+  }
+};
+
+const activatePresentationMedia = async () => {
+  if (!isPresentation) return true;
+  if (currentSlide === 1 && introPlayback.playing) return applyIntroPlayback(introPlayback, true);
+  const activeVideo = ({ 3: kickoffVideo, 11: obstacleVideo, 17: speedVideo, 23: finishVideo })[currentSlide];
+  if (!activeVideo) return true;
+  try {
+    await activeVideo.play();
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 const setRealtimeAnswers = (rows) => {
@@ -666,7 +714,7 @@ const setRealtimeAnswers = (rows) => {
   if (currentSlide === 21) renderSpeedResponses();
 };
 
-window.OlympiaStage = { getState: getSynchronizedState, applyState: applySynchronizedState, setRealtimeAnswers, registerFinishBuzz, goToSlide };
+window.OlympiaStage = { getState: getSynchronizedState, applyState: applySynchronizedState, setRealtimeAnswers, registerFinishBuzz, goToSlide, activatePresentationMedia };
 
 $('#startButton').addEventListener('click', () => playIntro(true));
 playPauseButton.addEventListener('click', togglePlayback);
@@ -709,8 +757,20 @@ $$('[data-finish-game-round]').forEach((section) => {
   section.querySelector('.finish-wrong').addEventListener('click', () => judgeFinish(round, false));
 });
 
-video.addEventListener('play', () => setState('playing', 'Đang phát'));
-video.addEventListener('pause', () => { if (!video.ended && currentSlide === 1) setState('paused', 'Tạm dừng'); });
+video.addEventListener('play', () => {
+  setState('playing', 'Đang phát');
+  if (!isPresentation) {
+    introPlayback = { playing: true, startedAt: new Date().toISOString(), position: video.currentTime || 0, revision: introPlayback.revision + 1 };
+    signalStateChange();
+  }
+});
+video.addEventListener('pause', () => {
+  if (!video.ended && currentSlide === 1) setState('paused', 'Tạm dừng');
+  if (!isPresentation && !video.ended) {
+    introPlayback = { playing: false, startedAt: null, position: video.currentTime || 0, revision: introPlayback.revision + 1 };
+    signalStateChange();
+  }
+});
 video.addEventListener('ended', () => window.setTimeout(() => goToSlide(2), 500));
 video.addEventListener('timeupdate', () => {
   progressFill.style.width = `${video.duration ? (video.currentTime / video.duration) * 100 : 0}%`;

@@ -16,6 +16,8 @@ const config = await fetch('/api/config', { cache: 'no-store' }).then((response)
 const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
 let currentState = null;
 let submittedKey = '';
+let lastStateUpdatedAt = null;
+let statePollBusy = false;
 
 const show = (target) => {
   ['#waitPanel', '#answerPanel', '#buzzPanel'].forEach((selector) => { $(selector).hidden = selector !== target; });
@@ -132,11 +134,15 @@ $('#buzzButton').addEventListener('click', async () => {
 });
 
 const initial = await fetch('/api/state', { cache: 'no-store' }).then((response) => response.json());
+lastStateUpdatedAt = initial.updatedAt || null;
 render(initial.state);
 if (storedPin) await enterRoom(storedPin);
 
 supabase.channel(`team-${teamId}-${config.gameId}`)
-  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'game_state', filter: `id=eq.${config.gameId}` }, ({ new: row }) => render(row.state))
+  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'game_state', filter: `id=eq.${config.gameId}` }, ({ new: row }) => {
+    lastStateUpdatedAt = row.updated_at || lastStateUpdatedAt;
+    render(row.state);
+  })
   .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'buzzes', filter: `game_id=eq.${config.gameId}` }, ({ new: row }) => {
     if (currentState?.finishSteal?.active) {
       $('#buzzButton').disabled = true;
@@ -144,3 +150,19 @@ supabase.channel(`team-${teamId}-${config.gameId}`)
     }
   })
   .subscribe((status) => { $('#connectionState').textContent = status === 'SUBSCRIBED' ? 'Realtime đã kết nối' : 'Đang kết nối…'; });
+
+window.setInterval(async () => {
+  if (statePollBusy) return;
+  statePollBusy = true;
+  try {
+    const payload = await fetch('/api/state', { cache: 'no-store' }).then((response) => response.json());
+    if (payload.updatedAt && payload.updatedAt !== lastStateUpdatedAt) {
+      lastStateUpdatedAt = payload.updatedAt;
+      render(payload.state);
+    }
+  } catch {
+    $('#connectionState').textContent = 'Đang kết nối lại…';
+  } finally {
+    statePollBusy = false;
+  }
+}, 700);
