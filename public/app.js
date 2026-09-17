@@ -58,6 +58,7 @@ const mediaBank = {
 };
 const roundVideos = { kickoffOutroUrl: '', obstacleSetOutroUrls: Array(4).fill('') };
 const obstacleImages = Array(4).fill('');
+const obstacleTitleLetterCounts = [14, 14, 10, 9];
 const questionAudio = new Audio();
 let lastQuestionMediaKey = '';
 
@@ -163,7 +164,12 @@ const loadEditorContent = () => {
   $('#editorAnswerText').value = answers[question] ?? '';
   $('#editorQuestionMode').value = media[question]?.mode || 'text';
   $('#editorAudioWrap').hidden = $('#editorQuestionMode').value !== 'audio';
-  $('#editorVisualWrap').hidden = !['speed', 'finish'].includes(round);
+  const supportsVisual = ['speed', 'finish'].includes(round);
+  $('#editorVisualModeWrap').hidden = !supportsVisual;
+  $('#editorVisualMode').value = media[question]?.visualUrl ? 'media' : 'none';
+  $('#editorVisualWrap').hidden = !supportsVisual || $('#editorVisualMode').value !== 'media';
+  $('#editorAudioFile').value = '';
+  $('#editorVisualFile').value = '';
   $('#editorSaveStatus').textContent = '';
 };
 
@@ -195,9 +201,14 @@ const saveQuestionContent = async () => {
   const audioFile = $('#editorAudioFile').files[0];
   const visualFile = $('#editorVisualFile').files[0];
   if (audioFile) media[question].audioUrl = (await window.OlympiaSync.uploadMedia(audioFile)).publicUrl;
-  if (visualFile) {
+  if (['speed', 'finish'].includes(round) && $('#editorVisualMode').value === 'none') {
+    media[question].visualUrl = '';
+    media[question].visualType = '';
+  } else if (visualFile) {
     media[question].visualUrl = (await window.OlympiaSync.uploadMedia(visualFile)).publicUrl;
     media[question].visualType = visualFile.type.startsWith('video/') ? 'video' : 'image';
+  } else if (['speed', 'finish'].includes(round) && $('#editorVisualMode').value === 'media' && !media[question].visualUrl) {
+    throw new Error('Hãy chọn một tệp ảnh hoặc video');
   }
   const obstacleImage = $('#editorObstacleImageFile').files[0];
   if (round === 'obstacle' && obstacleImage) obstacleImages[obstacleSet] = (await window.OlympiaSync.uploadMedia(obstacleImage)).publicUrl;
@@ -409,8 +420,7 @@ const renderObstacleGame = () => {
   $('#obstacleTimerButton').disabled = !hasSelection;
   $('#puzzleBoard').innerHTML = obstacleRevealed.map((revealed, index) => `<button type="button" aria-label="Chọn câu hỏi ${index + 1}" class="puzzle-piece${revealed ? ' revealed' : ''}${index === obstacleQuestionIndex ? ' current' : ''}" data-obstacle-piece="${index}" ${revealed ? 'disabled' : ''}>${revealed ? '' : index + 1}</button>`).join('');
   const answerLength = (value) => [...String(value || '').replace(/\s/g, '')].length;
-  const displayedAnswer = hasSelection ? obstacleAnswers[obstacleQuestionIndex] : obstacleAnswers[6];
-  $('#obstacleAnswerLength').textContent = `${answerLength(displayedAnswer)} CHỮ CÁI`;
+  $('#obstacleAnswerLength').textContent = `${obstacleTitleLetterCounts[activeObstacleSet]} CHỮ CÁI`;
   $('#obstacleClueList').innerHTML = obstacleAnswers.slice(0, 6).map((answer, index) => {
     const count = answerLength(answer);
     return `
@@ -494,9 +504,10 @@ const renderSpeedGame = () => {
   $('#speedQuestionNumber').textContent = String(speedQuestionIndex + 1).padStart(2, '0');
   $('#speedQuestionTime').textContent = `${duration} GIÂY`;
   const media = mediaBank.speed[speedQuestionIndex];
+  $('.speed-stage').classList.toggle('no-media', !media?.visualUrl);
   $('#speedQuestion').textContent = media?.mode === 'audio' ? 'CÂU HỎI ÂM THANH' : speedQuestions[speedQuestionIndex];
   playQuestionAudio(media, `speed-${speedQuestionIndex}`);
-  renderVisualMedia($('#speedMedia'), media, '<strong>HÌNH ẢNH / VIDEO CÂU HỎI</strong><small>Chưa có tệp minh họa</small>', `speed-${speedQuestionIndex}`);
+  renderVisualMedia($('#speedMedia'), media, '', `speed-${speedQuestionIndex}`);
   $('#speedTimer').textContent = String(duration);
   $('#speedTimerButton small').textContent = 'BẮT ĐẦU';
   $('#speedTeamScores').innerHTML = teams.map((team) => `<span><b>${team.name}</b><strong>${team.score}</strong></span>`).join('');
@@ -1042,6 +1053,7 @@ $('#editorTeam').addEventListener('change', loadEditorContent);
 $('#editorObstacleSet').addEventListener('change', loadEditorContent);
 $('#editorQuestion').addEventListener('change', loadEditorContent);
 $('#editorQuestionMode').addEventListener('change', () => { $('#editorAudioWrap').hidden = $('#editorQuestionMode').value !== 'audio'; });
+$('#editorVisualMode').addEventListener('change', () => { $('#editorVisualWrap').hidden = $('#editorVisualMode').value !== 'media'; });
 $('#saveQuestionContent').addEventListener('click', saveQuestionContent);
 $('#questionEditor').addEventListener('click', (event) => { if (event.target === $('#questionEditor')) closeQuestionEditor(); });
 $('#kickoffPlay').addEventListener('click', () => kickoffVideo.play().then(() => $('.kickoff-intro').classList.remove('needs-play')));

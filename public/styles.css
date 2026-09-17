@@ -160,6 +160,23 @@
   object-position:center;
   background:#000;
 }
+.speed-media:not(.has-media){display:none}
+.speed-stage.no-media{
+  grid-template-rows:1fr;
+}
+.speed-stage.no-media .speed-question{
+  align-self:center;
+  display:flex;
+  min-height:14rem;
+  flex-direction:column;
+  justify-content:center;
+  margin:0 4%;
+  text-align:center;
+}
+.speed-stage.no-media .speed-question p{
+  font-size:clamp(1.2rem,2.2vw,2.25rem);
+  line-height:1.35;
+}
 
 /* Về Đích: giảm cỡ chữ và đặt media 16:9 bên dưới câu hỏi. */
 .finish-question-panel{
@@ -210,7 +227,22 @@
   .speed-question{min-height:4.4rem;padding:.5rem .65rem}
   .speed-question p{font-size:.76rem}
   .speed-media{width:96%;max-height:40vh;margin-top:.4rem}
+  .speed-stage.no-media .speed-question{min-height:10rem;margin:0 2%}
+  .speed-stage.no-media .speed-question p{font-size:clamp(1rem,4vw,1.35rem)}
   .finish-question-panel{height:41vh;padding:.7rem .85rem}
   .finish-question-text{font-size:.74rem;line-height:1.2}
   .finish-question-panel.has-visual .finish-question-media{width:92%;max-height:25vh}
 }
+
+/* Giữ tiêu đề số chữ cái VCNV trên đúng một dòng. */
+.clue-title{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:.32em;
+  white-space:nowrap;
+  font-size:clamp(.72rem,1.32vw,1.28rem);
+  line-height:1;
+}
+.clue-title b{display:inline;white-space:nowrap}
+@media(max-width:760px){.clue-title{font-size:clamp(.55rem,2.2vw,.7rem);gap:.25em}}

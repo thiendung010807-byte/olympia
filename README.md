@@ -81,7 +81,7 @@ Vercel tự nhận các file trong thư mục `api` là Node.js Functions và c�
 ## 5. Cách vận hành
 
 1. Máy điều khiển mở `/admin`, nhập `ADMIN_PASSWORD`.
-   Dùng nút biểu tượng bút để mở **Câu hỏi & đáp án**. Mỗi câu có thể là chữ hoặc âm thanh tự chạy; Tăng Tốc và Về Đích nhận thêm ảnh/video 16:9. Vượt Chướng Ngại Vật có **4 bộ game độc lập**, mỗi bộ có 6 hàng ngang, đáp án trung tâm, ảnh chướng ngại vật và video kết thúc riêng. Video kết thúc Khởi Động cũng được tải tại đây. Bấm **Lưu & đồng bộ** để ghi bền vững vào `game_content` (không mất khi reload/reset). Nút **Đ** sửa điểm; nút **↺** reset tiến trình nhưng giữ nguyên ngân hàng câu hỏi.
+   Dùng nút biểu tượng bút để mở **Câu hỏi & đáp án**. Mỗi câu có thể là chữ hoặc âm thanh tự chạy; Tăng Tốc và Về Đích có lựa chọn **Chỉ có câu hỏi** hoặc **Có ảnh/video** 16:9. Chọn “Chỉ có câu hỏi” cũng xóa media cũ khỏi câu đó. Vượt Chướng Ngại Vật có **4 bộ game độc lập**, mỗi bộ có 6 hàng ngang, đáp án trung tâm, ảnh chướng ngại vật và video kết thúc riêng. Video kết thúc Khởi Động cũng được tải tại đây. Bấm **Lưu & đồng bộ** để ghi bền vững vào `game_content` (không mất khi reload/reset). Nút **Đ** sửa điểm; nút **↺** reset tiến trình nhưng giữ nguyên ngân hàng câu hỏi.
 2. Máy chiếu mở `/trinh-chieu` và bật toàn màn hình.
    Nhấn **Bật trình chiếu** một lần trước khi bắt đầu để trình duyệt cho phép phát video và âm thanh. Realtime là kênh đồng bộ chính; hệ thống còn kiểm tra dự phòng mỗi 700 ms nếu kết nối WebSocket bị gián đoạn.
 3. Ba máy đội thi mở `/nhom/1`, `/nhom/2`, `/nhom/3`, nhập PIN tương ứng.
